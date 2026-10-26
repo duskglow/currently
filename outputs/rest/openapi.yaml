@@ -127,6 +127,25 @@ paths:
                         t: { type: string, format: date-time }
                         v: { type: number }
         "404": { $ref: "#/components/responses/Error" }
+  /api/v1/shutdown:
+    get:
+      summary: The shutdown policy, its current assessment and what a shutdown would do
+      responses:
+        "200":
+          description: Policy status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled: { type: boolean }
+                  dry_run: { type: boolean }
+                  state: { type: string, enum: [disabled, armed, shutting down, done] }
+                  reason: { type: string }
+                  triggers: { type: array, items: { type: string } }
+                  supplies: { type: array, items: { type: object } }
+                  plan: { type: array, items: { type: string } }
+                  steps: { type: array, items: { type: object } }
   /api/v1/events:
     get:
       summary: Stream events (Server-Sent Events)

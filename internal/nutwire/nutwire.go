@@ -1,15 +1,17 @@
-package nutproto
+// Package nutwire implements the NUT network protocol's line syntax.
+package nutwire
 
 import (
 	"errors"
 	"strings"
 )
 
-var errUnterminated = errors.New("unterminated quote")
+// ErrUnterminated means a quoted string was not closed.
+var ErrUnterminated = errors.New("unterminated quote")
 
-// split tokenizes a protocol line: words separated by spaces or tabs, or
+// Split tokenizes a protocol line: words separated by spaces or tabs, or
 // double-quoted strings in which \" and \\ are escapes.
-func split(line string) ([]string, error) {
+func Split(line string) ([]string, error) {
 	var (
 		args   []string
 		cur    strings.Builder
@@ -50,7 +52,7 @@ func split(line string) ([]string, error) {
 		}
 	}
 	if quoted {
-		return nil, errUnterminated
+		return nil, ErrUnterminated
 	}
 	if inWord {
 		args = append(args, cur.String())
@@ -58,8 +60,8 @@ func split(line string) ([]string, error) {
 	return args, nil
 }
 
-// quote renders a value as a protocol string.
-func quote(s string) string {
+// Quote renders a value as a protocol string.
+func Quote(s string) string {
 	s = strings.ReplaceAll(s, `\`, `\\`)
 	s = strings.ReplaceAll(s, `"`, `\"`)
 	return `"` + s + `"`

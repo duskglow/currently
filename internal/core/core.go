@@ -76,10 +76,15 @@ func (c *Core) Run(ctx context.Context) error {
 	c.mu.Lock()
 	for _, name := range c.order {
 		r := c.runners[name]
+		rctx, cancel := context.WithCancel(ctx)
+		r.mu.Lock()
+		r.cancel = cancel
+		r.mu.Unlock()
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			r.run(ctx)
+			defer cancel()
+			r.run(rctx)
 		}()
 	}
 	c.mu.Unlock()
@@ -101,6 +106,27 @@ func (c *Core) Run(ctx context.Context) error {
 	wg.Wait()
 	return nil
 }
+
+// StopUPS stops one UPS's driver for good (until restart). The shutdown
+// policy uses it to log out of a remote NUT server before shutting down.
+func (c *Core) StopUPS(name string) {
+	c.mu.Lock()
+	r := c.runners[name]
+	c.mu.Unlock()
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	cancel := r.cancel
+	r.mu.Unlock()
+	if cancel != nil {
+		r.log.Info("UPS driver stopped")
+		cancel()
+	}
+}
+
+// Publish sends an event to subscribers.
+func (c *Core) Publish(e sdk.Event) { c.bus.Publish(e) }
 
 // ListUPS implements sdk.Host.
 func (c *Core) ListUPS() []sdk.UPS { return c.store.List() }
@@ -200,8 +226,9 @@ type runner struct {
 	spec UPSSpec
 	log  *slog.Logger
 
-	mu  sync.Mutex
-	dev sdk.Device
+	mu     sync.Mutex
+	dev    sdk.Device
+	cancel context.CancelFunc
 }
 
 func (r *runner) current() sdk.Device {

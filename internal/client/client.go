@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nut-ng/nut-ng/internal/policy"
 	"github.com/nut-ng/nut-ng/pkg/sdk"
 )
 
@@ -102,6 +103,13 @@ func (c *Client) ListUPS(ctx context.Context) ([]sdk.UPS, error) {
 func (c *Client) GetUPS(ctx context.Context, name string) (sdk.UPS, error) {
 	var out sdk.UPS
 	err := c.do(ctx, "GET", "/api/v1/ups/"+url.PathEscape(name), nil, &out)
+	return out, err
+}
+
+// Shutdown returns the shutdown policy's status.
+func (c *Client) Shutdown(ctx context.Context) (policy.Status, error) {
+	var out policy.Status
+	err := c.do(ctx, "GET", "/api/v1/shutdown", nil, &out)
 	return out, err
 }
 

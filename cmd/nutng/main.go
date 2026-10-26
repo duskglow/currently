@@ -84,6 +84,8 @@ Try it without hardware:
 		a.configCmd(),
 		a.serviceCmd(),
 		a.doctorCmd(),
+		a.testCmd(),
+		a.importNUTCmd(),
 		a.debugCmd(),
 		a.versionCmd(),
 	)

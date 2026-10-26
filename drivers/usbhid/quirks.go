@@ -67,11 +67,34 @@ type FlagRule struct {
 	When  *int64   `yaml:"when"`
 }
 
-// CommandRule writes Value to the first available path.
+// CommandRule writes Value to the first available path, or performs the
+// Writes in order.
 type CommandRule struct {
-	Paths       []string `yaml:"paths"`
-	Value       int64    `yaml:"value"`
-	Description string   `yaml:"description"`
+	Paths       []string       `yaml:"paths"`
+	Value       int64          `yaml:"value"`
+	Writes      []CommandWrite `yaml:"writes"`
+	Description string         `yaml:"description"`
+}
+
+// CommandWrite is one field write of a command. Exactly one of Value (a
+// raw value), Physical (in the field's units, such as seconds) or Param
+// (the command parameter, in the field's units) gives the value.
+type CommandWrite struct {
+	Paths    []string `yaml:"paths"`
+	Value    *int64   `yaml:"value"`
+	Physical *float64 `yaml:"physical"`
+	Param    bool     `yaml:"param"`
+	// Default is used when Param is set and no parameter is given.
+	Default float64 `yaml:"default"`
+}
+
+// writes returns the rule as a list of writes.
+func (r CommandRule) writes() []CommandWrite {
+	if len(r.Writes) > 0 {
+		return r.Writes
+	}
+	v := r.Value
+	return []CommandWrite{{Paths: r.Paths, Value: &v}}
 }
 
 var vendorIDRE = regexp.MustCompile(`^[0-9a-fA-F]{4}$`)
@@ -112,8 +135,22 @@ func ParseQuirkFile(name string, data []byte) (*QuirkFile, error) {
 		}
 	}
 	for c, r := range q.Commands {
-		if len(r.Paths) == 0 {
-			bad("command %s has no paths", c)
+		if len(r.Writes) > 0 && len(r.Paths) > 0 {
+			bad("command %s: use either paths/value or writes", c)
+		}
+		for i, w := range r.writes() {
+			n := 0
+			for _, set := range []bool{w.Value != nil, w.Physical != nil, w.Param} {
+				if set {
+					n++
+				}
+			}
+			if len(w.Paths) == 0 {
+				bad("command %s: write %d has no paths", c, i+1)
+			}
+			if n != 1 {
+				bad("command %s: write %d needs exactly one of value, physical or param", c, i+1)
+			}
 		}
 	}
 	for _, f := range q.Fixups {

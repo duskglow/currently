@@ -4,11 +4,11 @@ UPS monitoring that is easy to set up. One self-contained binary, one short
 config file, clear error messages, and an API that monitoring tools can
 query.
 
-> **Status:** early development (milestone 3 of 7). USB UPSes work on
-> Windows and Linux. nutng serves the NUT protocol, Prometheus metrics and
-> a REST API, and installs itself as a service. nutng's own shutdown
-> handling, plugins and SNMP are next; meanwhile NUT's upsmon works with
-> nutng for shutdowns. See [docs/PLAN.md](docs/PLAN.md).
+> **Status:** early development (milestone 4 of 7). USB UPSes work on
+> Windows and Linux. nutng shuts computers down safely (as primary or
+> secondary, and alongside NUT's upsmon and upsd), serves the NUT
+> protocol, Prometheus metrics and a REST API, and installs itself as a
+> service. Plugins and SNMP are next. See [docs/PLAN.md](docs/PLAN.md).
 
 ## Get started
 
@@ -49,6 +49,64 @@ nutng set cyberpower battery.charge.low 20
 No UPS at hand? `nutng serve --demo` adds a simulated one whose mains power
 fails for one minute every three minutes; `nutng cmd demo sim.power.fail`
 rehearses an outage.
+
+Moving from NUT? `nutng import-nut` converts `/etc/nut` (ups.conf,
+upsd.conf, upsd.users, upsmon.conf) into a nutng.yaml and lists anything it
+could not convert.
+
+## Shutting down
+
+nutng shuts this computer down when the UPS is about to run out, as NUT's
+upsmon does. Without a `shutdown` section it only monitors.
+
+```yaml
+shutdown:
+  when:
+    low_battery: true        # the UPS's own low-battery signal (default)
+    on_battery_for: 5m       # optional: or after this long on battery
+    runtime_below: 5m        # optional: or when less runtime is left
+  hooks:                     # optional: run first, such as stopping VMs
+    - /usr/local/bin/stop-vms
+```
+
+```sh
+nutng test shutdown   # the policy, how each UPS looks to it now, and every step (does nothing)
+```
+
+**Primary and secondaries.** The computer the UPS is plugged into is its
+*primary*. Other computers on the same UPS follow it as *secondaries*,
+either with NUT's upsmon or with nutng's `nut` driver, which also follows
+NUT's own upsd:
+
+```yaml
+# on a secondary
+ups:
+  rack:
+    driver: nut
+    host: 192.168.1.10       # the primary (nutng or NUT upsd)
+    ups: rack
+    username: mon            # a secondary user there, so the primary waits for us
+    password_env: NUTNG_MON_PASSWORD
+shutdown: {}                 # follow the primary's FSD, or low battery
+```
+
+When the primary decides to shut down, it sets FSD (forced shutdown),
+waits up to `wait_for_secondaries` (15s) for the secondaries to shut down
+and log out, runs its hooks, and shuts down. With `power_off_ups: true`, it
+first tells the UPS to cut power after `ups_off_delay` (60s) and to restore
+it when mains returns, so everything boots again by itself.
+
+**Testing it safely.**
+
+- `shutdown.dry_run: true` logs every step and does none of them.
+- A simulated UPS (`simulator`, `replay`) never shuts the computer down:
+  its outages only act on simulated UPSes, unless you set a custom
+  `shutdown.command`.
+- `NUTNG_NEVER_SHUTDOWN=1` in the environment blocks the operating
+  system's shutdown command (a custom `shutdown.command` still runs, so
+  point it at something harmless).
+- Every policy decision and step appears in `nutng watch`, the log, and
+  `GET /api/v1/shutdown`.
 
 ### USB UPS support
 
@@ -160,6 +218,9 @@ nutng.yaml:4: UPS rack (usbhid driver): unknown option "serail" (did you mean "s
 | `drivers/usbhid/hid` | HID report descriptor parser |
 | `drivers/usbhid/quirks` | Field-to-variable mappings per vendor |
 | `drivers/simulator` | Simulated UPS |
+| `internal/policy` | Shutdown policy: when and how to shut down |
+| `internal/nutimport` | `nutng import-nut` |
+| `drivers/nutclient` | `nut` driver: a UPS on another nutng or NUT upsd |
 | `outputs/rest` | REST/JSON API and event stream |
 | `outputs/nutproto` | NUT protocol server (upsd compatible) |
 | `outputs/prometheus` | Prometheus metrics |
@@ -172,4 +233,5 @@ go test ./...
 go vet ./...
 NUTNG_HW=1 go test ./drivers/usbhid -run TestHardware -v   # with a UPS attached
 go build -o nutng ./cmd/nutng && test/integration/nut-clients.sh ./nutng   # Linux
+test/integration/shutdown.sh ./nutng   # Linux; shuts nothing down (marker files only)
 ```

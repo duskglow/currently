@@ -19,6 +19,7 @@ import (
 
 	"github.com/nut-ng/nut-ng/drivers/simulator"
 	"github.com/nut-ng/nut-ng/internal/core"
+	"github.com/nut-ng/nut-ng/internal/nutwire"
 	"github.com/nut-ng/nut-ng/pkg/sdk"
 )
 
@@ -33,15 +34,15 @@ func TestSplit(t *testing.T) {
 		`SET VAR u v ""`:                      {"SET", "VAR", "u", "v", ""},
 	}
 	for in, want := range tests {
-		got, err := split(in)
+		got, err := nutwire.Split(in)
 		if err != nil || strings.Join(got, "|") != strings.Join(want, "|") {
-			t.Errorf("split(%q) = %q, %v; want %q", in, got, err, want)
+			t.Errorf("nutwire.Split(%q) = %q, %v; want %q", in, got, err, want)
 		}
 	}
-	if _, err := split(`GET "open`); err == nil {
+	if _, err := nutwire.Split(`GET "open`); err == nil {
 		t.Error("unterminated quote accepted")
 	}
-	if got := quote(`a "b" \c`); got != `"a \"b\" \\c"` {
+	if got := nutwire.Quote(`a "b" \c`); got != `"a \"b\" \\c"` {
 		t.Errorf("quote = %s", got)
 	}
 }

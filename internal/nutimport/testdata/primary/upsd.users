@@ -1,0 +1,15 @@
+[admin]
+	password = "s3cret"
+	actions = SET
+	instcmds = ALL
+
+[upsmon]
+	password = "mon pass"
+	upsmon primary
+
+[monslave]
+	password = slavepw
+	upsmon slave
+
+[reader]
+	password = x

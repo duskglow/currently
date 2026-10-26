@@ -127,3 +127,49 @@ func TestDeviceCommands(t *testing.T) {
 		t.Errorf("load 80: %v", err)
 	}
 }
+
+func TestPowerCommands(t *testing.T) {
+	d := &device{m: newTestModel(t, sdk.Config{}), poke: make(chan struct{}, 1)}
+	ctx := context.Background()
+	if err := d.RunCommand(ctx, "shutdown.return", "60"); err != nil {
+		t.Fatal(err)
+	}
+	m := d.m
+	m.step(30 * time.Second)
+	if v := m.vars(); v["ups.timer.shutdown"] != "30" || m.status().Has(sdk.FlagOff) {
+		t.Fatalf("after 30s: timer %s, status %s", v["ups.timer.shutdown"], m.status())
+	}
+	// Mains is up, so the output goes off at 60s and returns 30s later.
+	m.manual = boolPtr(false) // simulate an outage meanwhile
+	m.step(40 * time.Second)
+	if !m.status().Has(sdk.FlagOff) {
+		t.Fatalf("output not off: %s", m.status())
+	}
+	m.step(time.Hour) // still off during the outage
+	if !m.status().Has(sdk.FlagOff) {
+		t.Fatalf("output came back during the outage: %s", m.status())
+	}
+	m.manual = boolPtr(true)
+	m.step(time.Second)
+	if v := m.vars(); !m.status().Has(sdk.FlagOff) || v["ups.timer.start"] == "-1" {
+		t.Fatalf("after mains returns: %s, timer.start %s", m.status(), v["ups.timer.start"])
+	}
+	m.step(31 * time.Second)
+	if st := m.status(); st.Has(sdk.FlagOff) || !st.Has(sdk.FlagOnline) {
+		t.Fatalf("output not restored: %s", st)
+	}
+
+	if err := d.RunCommand(ctx, "load.off.delay", "10"); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.RunCommand(ctx, "shutdown.stop", ""); err != nil {
+		t.Fatal(err)
+	}
+	m.step(time.Minute)
+	if m.status().Has(sdk.FlagOff) || m.vars()["ups.timer.shutdown"] != "-1" {
+		t.Fatalf("shutdown.stop did not cancel: %s", m.status())
+	}
+	if err := d.RunCommand(ctx, "load.off.delay", "soon"); !errors.Is(err, sdk.ErrInvalid) {
+		t.Errorf("bad delay: %v", err)
+	}
+}

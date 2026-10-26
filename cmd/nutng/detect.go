@@ -133,7 +133,7 @@ func (a *app) detectCmd() *cobra.Command {
 }
 
 func (a *app) initCmd() *cobra.Command {
-	var yes, network, force bool
+	var yes, network, force, noShutdown bool
 	var output string
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -187,11 +187,13 @@ REST API on this machine only.`,
 					chosen[i].UPS = ask.name(fmt.Sprintf("Name for %s", chosen[i].Description), chosen[i].UPS, taken)
 				}
 			}
+			shutdown := !noShutdown
 			if interactive {
-				network = ask.yesNo("Should monitoring tools on other machines reach nutng's API?", network)
+				network = ask.yesNo("Should monitoring tools and NUT clients on other machines reach nutng?", network)
+				shutdown = ask.yesNo("Shut this computer down when the UPS battery runs low?", shutdown)
 			}
 
-			text := renderConfig(chosen, demo, network)
+			text := renderConfig(chosen, demo, network, shutdown)
 			if _, err := config.Parse(path, []byte(text)); err != nil {
 				return fmt.Errorf("internal error: generated config is invalid: %w", err)
 			}
@@ -206,6 +208,9 @@ REST API on this machine only.`,
 				fmt.Fprintf(out, " --config %s", strconv.Quote(path))
 			}
 			fmt.Fprintln(out, "\nThen check it with: nutng status")
+			if shutdown {
+				fmt.Fprintln(out, "See what a shutdown would do (without doing it): nutng test shutdown")
+			}
 			return nil
 		},
 	}
@@ -213,11 +218,12 @@ REST API on this machine only.`,
 	f.BoolVarP(&yes, "yes", "y", false, "accept the defaults without asking")
 	f.BoolVar(&network, "network", false, "serve the API on all network interfaces, not just this machine")
 	f.BoolVar(&force, "force", false, "replace an existing config file")
+	f.BoolVar(&noShutdown, "no-shutdown", false, "only monitor; never shut this computer down")
 	f.StringVarP(&output, "output", "o", "", "where to write the config (default: --config, or "+config.DefaultPath()+")")
 	return cmd
 }
 
-func renderConfig(chosen []found, demo, network bool) string {
+func renderConfig(chosen []found, demo, network, shutdown bool) string {
 	var b strings.Builder
 	b.WriteString("# nutng configuration, written by `nutng init`.\n")
 	b.WriteString("# Check changes with `nutng config validate`.\n\nups:\n")
@@ -232,10 +238,23 @@ func renderConfig(chosen []found, demo, network bool) string {
 	b.WriteString("\nlisten:\n")
 	if network {
 		b.WriteString("  http: \":9300\"             # REST API on all interfaces (read-only without a token)\n")
+		b.WriteString("  nut: \":3493\"              # NUT protocol on all interfaces\n")
 	} else {
 		b.WriteString("  http: \"" + config.DefaultHTTP + "\"   # REST API; use \":9300\" for other machines\n")
+		b.WriteString("  nut: \"" + config.DefaultNUT + "\"    # NUT protocol; use \":3493\" for other machines\n")
 	}
 	b.WriteString("\n# api:\n#   token_env: NUTNG_TOKEN   # allow commands over HTTP with this bearer token\n")
+	if shutdown {
+		b.WriteString("\n# Shut this computer down when a UPS on battery is about to run out.\n")
+		b.WriteString("# Check it with `nutng test shutdown`; it never shuts down for a simulated UPS.\n")
+		b.WriteString("shutdown:\n  when:\n    low_battery: true       # the UPS's own low-battery signal\n")
+		b.WriteString("    # on_battery_for: 5m     # or after this long on battery\n")
+		b.WriteString("    # runtime_below: 5m      # or when less runtime than this is left\n")
+		b.WriteString("  # hooks:                  # commands to run first, such as stopping VMs\n")
+		b.WriteString("  #   - /usr/local/bin/stop-vms\n")
+	} else {
+		b.WriteString("\n# No shutdown section: nutng monitors only. See `nutng test shutdown`.\n")
+	}
 	return b.String()
 }
 

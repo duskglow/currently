@@ -251,14 +251,17 @@ func (d *device) Watch(ctx context.Context, sink func(sdk.Update)) error {
 func (d *device) Commands() []sdk.Command { return d.m.Commands() }
 func (d *device) Writable() []string      { return d.m.Writable() }
 
-func (d *device) RunCommand(_ context.Context, name, _ string) error {
-	path, raw, err := d.m.Command(name)
+func (d *device) RunCommand(_ context.Context, name, param string) error {
+	writes, err := d.m.Command(name, param)
 	if err != nil {
 		return err
 	}
-	if err := d.dev.Write(path, raw); err != nil {
-		return fmt.Errorf("%s: %w", name, err)
+	for _, w := range writes {
+		if err := d.dev.Write(w.Path, w.Value); err != nil {
+			return fmt.Errorf("%s: write %s: %w", name, w.Path, err)
+		}
 	}
+	d.log.Info("UPS command sent", "command", name, "param", param, "writes", len(writes))
 	d.report()
 	return nil
 }

@@ -194,6 +194,11 @@ func (a *app) renderWatch(ctx context.Context, c *client.Client, p painter, ups 
 		}
 	}
 
+	if st, err := c.Shutdown(ctx); err == nil {
+		line, color := shutdownLine(st)
+		fmt.Fprintf(&b, "  %-11s %s\n", "Shutdown", p.paint(color, line))
+	}
+
 	fmt.Fprintf(&b, "\n%s\n", p.paint(term.Bold, "Recent events"))
 	if len(recent) == 0 {
 		fmt.Fprintln(&b, p.paint(term.Dim, "  (none yet)"))

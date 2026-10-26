@@ -45,14 +45,14 @@ func TestRenderConfigIsValid(t *testing.T) {
 	ups := found{UPS: "cyberpower", Discovered: sdk.Discovered{Driver: "usbhid", Name: `CPS "CP1500"`,
 		Config: sdk.Config{"id": "0764:0601", "serial": "X1"}}}
 	for _, tc := range []struct {
-		chosen        []found
-		demo, network bool
+		chosen                  []found
+		demo, network, shutdown bool
 	}{
-		{[]found{ups}, false, false},
-		{[]found{ups}, false, true},
-		{nil, true, false},
+		{[]found{ups}, false, false, true},
+		{[]found{ups}, false, true, false},
+		{nil, true, false, true},
 	} {
-		text := renderConfig(tc.chosen, tc.demo, tc.network)
+		text := renderConfig(tc.chosen, tc.demo, tc.network, tc.shutdown)
 		c, err := config.Parse("nutng.yaml", []byte(text))
 		if err != nil {
 			t.Fatalf("%v\n%s", err, text)
@@ -66,8 +66,11 @@ func TestRenderConfigIsValid(t *testing.T) {
 				t.Errorf("ups block = %+v", u)
 			}
 		}
-		if tc.network && c.Listen.HTTP != ":9300" {
-			t.Errorf("network listen = %q", c.Listen.HTTP)
+		if tc.network && (c.Listen.HTTP != ":9300" || c.Listen.NUT != ":3493") {
+			t.Errorf("network listen = %q, %q", c.Listen.HTTP, c.Listen.NUT)
+		}
+		if (c.Shutdown != nil) != tc.shutdown || (tc.shutdown && !*c.Shutdown.When.LowBattery) {
+			t.Errorf("shutdown section = %+v, want %v", c.Shutdown, tc.shutdown)
 		}
 	}
 }

@@ -122,6 +122,9 @@ const (
 	EventDriverError  EventType = "driver_error"
 	// EventCommand: an instant command or variable change was sent.
 	EventCommand EventType = "command"
+	// EventShutdown: the shutdown policy acted (shutdown scheduled,
+	// cancelled, started, or a step of it).
+	EventShutdown EventType = "shutdown"
 )
 
 // Notable reports whether the event is worth showing to a person. Only

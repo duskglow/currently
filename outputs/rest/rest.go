@@ -36,7 +36,10 @@ type Options struct {
 	Trusted bool
 	// Version is reported by GET /api/v1.
 	Version string
-	Log     *slog.Logger
+	// Shutdown, if set, returns the shutdown policy's status for
+	// GET /api/v1/shutdown.
+	Shutdown func() any
+	Log      *slog.Logger
 }
 
 type handler struct {
@@ -70,6 +73,13 @@ func NewHandler(host sdk.Host, opts Options) http.Handler {
 	h.mux.HandleFunc("POST /api/v1/ups/{ups}/commands/{cmd}", h.mutation(h.runCommand))
 	h.mux.HandleFunc("GET /api/v1/ups/{ups}/history/{var}", h.history)
 	h.mux.HandleFunc("GET /api/v1/events", h.events)
+	h.mux.HandleFunc("GET /api/v1/shutdown", func(w http.ResponseWriter, _ *http.Request) {
+		if h.opts.Shutdown == nil {
+			writeJSON(w, http.StatusOK, map[string]any{"enabled": false, "state": "disabled"})
+			return
+		}
+		writeJSON(w, http.StatusOK, h.opts.Shutdown())
+	})
 	h.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, fmt.Sprintf("no such endpoint: %s %s (see /api/v1/openapi.yaml)", r.Method, r.URL.Path))
 	})

@@ -22,6 +22,7 @@ import (
 
 	"github.com/nut-ng/nut-ng/internal/config"
 	"github.com/nut-ng/nut-ng/internal/core"
+	"github.com/nut-ng/nut-ng/internal/policy"
 	"github.com/nut-ng/nut-ng/internal/registry"
 	"github.com/nut-ng/nut-ng/outputs/nutproto"
 	"github.com/nut-ng/nut-ng/outputs/prometheus"
@@ -37,6 +38,8 @@ type Options struct {
 	// Ready, if set, is called with the control socket path once nutng is
 	// serving.
 	Ready func(controlPath string)
+	// Executor replaces the one that really runs shutdown commands (tests).
+	Executor policy.Executor
 }
 
 // Run serves until ctx is cancelled. The config must already be validated.
@@ -97,14 +100,34 @@ func Run(ctx context.Context, o Options) error {
 		}
 	}
 
+	// The NUT server tells the shutdown policy which clients are logged in.
+	var nutSrv *nutproto.Server
+	if nutLn != nil {
+		users := map[string]nutproto.User{}
+		for name, u := range cfg.Users {
+			users[name] = nutproto.User{Password: u.Secret(), Role: u.Role}
+		}
+		nutSrv = nutproto.New(c, nutproto.Options{Users: users, TLS: nutTLS, Version: o.Version, Log: log.With("output", "nut")})
+	}
+	popts := policy.Options{Host: c, Executor: o.Executor, Log: log.With("component", "shutdown")}
+	if popts.Executor == nil {
+		popts.Executor = policy.NewExecutor(popts.Log)
+	}
+	if nutSrv != nil {
+		popts.Clients = nutSrv.Clients
+	}
+	engine := policy.New(PolicyConfig(cfg), popts)
+	shutdownStatus := func() any { return engine.Status() }
+
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return c.Run(ctx) })
+	g.Go(func() error { return engine.Run(ctx) })
 	g.Go(func() error {
-		h := rest.NewHandler(c, rest.Options{Trusted: true, Version: o.Version, Log: log.With("api", "control")})
+		h := rest.NewHandler(c, rest.Options{Trusted: true, Version: o.Version, Shutdown: shutdownStatus, Log: log.With("api", "control")})
 		return rest.Serve(ctx, ctl, h)
 	})
 	if httpLn != nil {
-		api := rest.NewHandler(c, rest.Options{Token: cfg.Token(), Version: o.Version, Log: log.With("api", "http")})
+		api := rest.NewHandler(c, rest.Options{Token: cfg.Token(), Version: o.Version, Shutdown: shutdownStatus, Log: log.With("api", "http")})
 		mux := http.NewServeMux()
 		mux.Handle("/", api)
 		if cfg.Listen.Metrics == "" {
@@ -120,14 +143,14 @@ func Run(ctx context.Context, o Options) error {
 		log.Info("Prometheus metrics listening", "addr", metricsLn.Addr().String())
 		g.Go(func() error { return rest.Serve(ctx, metricsLn, mux) })
 	}
-	if nutLn != nil {
-		users := map[string]nutproto.User{}
-		for name, u := range cfg.Users {
-			users[name] = nutproto.User{Password: u.Secret(), Role: u.Role}
-		}
-		srv := nutproto.New(c, nutproto.Options{Users: users, TLS: nutTLS, Version: o.Version, Log: log.With("output", "nut")})
-		log.Info("NUT protocol listening", "addr", nutLn.Addr().String(), "users", len(users), "starttls", nutTLS != nil)
-		g.Go(func() error { return srv.Serve(ctx, nutLn) })
+	if nutSrv != nil {
+		log.Info("NUT protocol listening", "addr", nutLn.Addr().String(), "users", len(cfg.Users), "starttls", nutTLS != nil)
+		g.Go(func() error { return nutSrv.Serve(ctx, nutLn) })
+	}
+	if cfg.Shutdown == nil {
+		log.Info("no shutdown policy: nutng will not shut this computer down (add a shutdown section to nutng.yaml)")
+	} else if why := policy.BuiltinBlocked(); why != "" && cfg.Shutdown.Command == "" {
+		log.Warn("the operating system shutdown command is blocked: " + why)
 	}
 
 	log.Info("nutng started", "version", o.Version, "config", orNone(cfg.Path),
@@ -168,6 +191,9 @@ func listenControl(path string) (net.Listener, string, error) {
 var errInUse = errors.New("another nutng daemon is already running")
 
 func listenUnix(path string) (net.Listener, error) {
+	if len(path) > config.MaxSocketPath() {
+		return nil, fmt.Errorf("socket path %s is %d characters long; the limit is %d", path, len(path), config.MaxSocketPath())
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, err
 	}

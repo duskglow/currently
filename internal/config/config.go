@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -27,7 +28,10 @@ type Config struct {
 	Listen Listen          `yaml:"listen"`
 	API    API             `yaml:"api"`
 	Users  map[string]User `yaml:"users,omitempty"`
-	Log    Log             `yaml:"log"`
+	// Shutdown is the shutdown policy. Without it, nutng only monitors and
+	// never shuts this computer down.
+	Shutdown *Shutdown `yaml:"shutdown,omitempty"`
+	Log      Log       `yaml:"log"`
 
 	// Path is the file the config was loaded from; empty for defaults.
 	Path string `yaml:"-"`
@@ -97,6 +101,99 @@ func (u User) Secret() string {
 	return u.Password
 }
 
+// Shutdown decides when to shut this computer down, and how.
+type Shutdown struct {
+	// UPS lists the UPSes that power this computer (default: all). UPSes
+	// read with the nut driver are watched as a secondary; the others are
+	// attached here, and this computer is their primary.
+	UPS []string `yaml:"ups,omitempty"`
+	// MinSupplies is how many of those UPSes must be healthy to keep
+	// running (NUT's MINSUPPLIES), default 1.
+	MinSupplies int          `yaml:"min_supplies,omitempty"`
+	When        ShutdownWhen `yaml:"when"`
+	// DeadTime is how long a UPS that was on battery may stay silent
+	// before it counts as critical, default 15s.
+	DeadTime time.Duration `yaml:"dead_time,omitempty"`
+	// WaitForSecondaries is how long a primary waits for NUT clients to log
+	// out after setting FSD (NUT's HOSTSYNC), default 15s.
+	WaitForSecondaries time.Duration `yaml:"wait_for_secondaries,omitempty"`
+	// FinalDelay is the pause before the shutdown command (NUT's
+	// FINALDELAY), default 5s.
+	FinalDelay time.Duration `yaml:"final_delay,omitempty"`
+	// Hooks are commands run before shutting down, such as stopping VMs.
+	Hooks       []string      `yaml:"hooks,omitempty"`
+	HookTimeout time.Duration `yaml:"hook_timeout,omitempty"`
+	// Command replaces the operating system's shutdown command.
+	Command string `yaml:"command,omitempty"`
+	// PowerOffUPS tells local UPSes to cut their output UPSOffDelay after
+	// the shutdown starts, and to restore it when mains power returns, so
+	// the computer boots again by itself.
+	PowerOffUPS bool          `yaml:"power_off_ups,omitempty"`
+	UPSOffDelay time.Duration `yaml:"ups_off_delay,omitempty"`
+	// DryRun logs every step without doing any of them.
+	DryRun bool `yaml:"dry_run,omitempty"`
+}
+
+// ShutdownWhen lists the triggers; any one makes an on-battery UPS
+// critical.
+type ShutdownWhen struct {
+	// LowBattery follows the UPS's own low-battery flag (default true).
+	LowBattery   *bool         `yaml:"low_battery,omitempty"`
+	OnBatteryFor time.Duration `yaml:"on_battery_for,omitempty"`
+	RuntimeBelow time.Duration `yaml:"runtime_below,omitempty"`
+	ChargeBelow  float64       `yaml:"charge_below,omitempty"`
+}
+
+// Shutdown defaults.
+const (
+	DefaultDeadTime           = 15 * time.Second
+	DefaultWaitForSecondaries = 15 * time.Second
+	DefaultFinalDelay         = 5 * time.Second
+	DefaultHookTimeout        = 2 * time.Minute
+	DefaultUPSOffDelay        = 60 * time.Second
+)
+
+func (s *Shutdown) fillDefaults() {
+	if s.MinSupplies == 0 {
+		s.MinSupplies = 1
+	}
+	if s.When.LowBattery == nil {
+		t := true
+		s.When.LowBattery = &t
+	}
+	if s.DeadTime == 0 {
+		s.DeadTime = DefaultDeadTime
+	}
+	if s.WaitForSecondaries == 0 {
+		s.WaitForSecondaries = DefaultWaitForSecondaries
+	}
+	if s.FinalDelay == 0 {
+		s.FinalDelay = DefaultFinalDelay
+	}
+	if s.HookTimeout == 0 {
+		s.HookTimeout = DefaultHookTimeout
+	}
+	if s.UPSOffDelay == 0 {
+		s.UPSOffDelay = DefaultUPSOffDelay
+	}
+}
+
+// MaxSocketPath is the longest Unix socket path the platform allows.
+func MaxSocketPath() int {
+	if runtime.GOOS == "darwin" || runtime.GOOS == "freebsd" {
+		return 103
+	}
+	return 107
+}
+
+// Supplies returns the UPSes that power this computer.
+func (c *Config) Supplies() []string {
+	if c.Shutdown != nil && len(c.Shutdown.UPS) > 0 {
+		return c.Shutdown.UPS
+	}
+	return c.UPSNames()
+}
+
 // API sets access to the REST API over the network.
 type API struct {
 	// Token, or the environment variable named by TokenEnv, is the bearer
@@ -122,7 +219,10 @@ const (
 
 // knownKeys lists the keys allowed in each fixed section, for typo hints.
 var knownKeys = map[string][]string{
-	"":               {"ups", "listen", "api", "users", "log"},
+	"": {"ups", "listen", "api", "users", "shutdown", "log"},
+	"shutdown": {"ups", "min_supplies", "when", "dead_time", "wait_for_secondaries", "final_delay",
+		"hooks", "hook_timeout", "command", "power_off_ups", "ups_off_delay", "dry_run"},
+	"shutdown.when":  {"low_battery", "on_battery_for", "runtime_below", "charge_below"},
 	"listen":         {"http", "nut", "nut_tls", "metrics", "control"},
 	"listen.nut_tls": {"cert_file", "key_file"},
 	"api":            {"token", "token_env"},
@@ -192,6 +292,9 @@ func Parse(path string, data []byte) (*Config, error) {
 			*addr = ""
 		}
 	}
+	if c.Shutdown != nil {
+		c.Shutdown.fillDefaults()
+	}
 	for name, u := range c.Users {
 		if r, ok := roleAliases[strings.ToLower(u.Role)]; ok {
 			u.Role = r
@@ -240,7 +343,7 @@ func (c *Config) walk(n *yaml.Node, path string, problems *[]Problem) {
 		case path == "ups":
 			c.Order = append(c.Order, key.Value)
 			c.walk(val, full, problems) // record option lines; options are checked by the driver
-		case path == "" || path == "listen" || path == "users" || strings.HasPrefix(full, "ups."):
+		case path == "" || path == "listen" || path == "users" || path == "shutdown" || strings.HasPrefix(full, "ups."):
 			c.walk(val, full, problems)
 		}
 	}
@@ -302,6 +405,9 @@ func (c *Config) Validate(reg *registry.Registry) error {
 	if c.Listen.NUT != "" {
 		checkAddr("listen.nut", c.Listen.NUT, DefaultNUT)
 	}
+	if n, limit := len(c.Listen.Control), MaxSocketPath(); n > limit {
+		add("listen.control", "listen.control is %d characters long, but socket paths are limited to %d; choose a shorter path", n, limit)
+	}
 	switch m := strings.ToLower(c.Listen.Metrics); {
 	case m == "" || m == "off":
 		if m == "" && c.Listen.HTTP == "" {
@@ -344,6 +450,43 @@ func (c *Config) Validate(reg *registry.Registry) error {
 	if c.API.TokenEnv != "" && os.Getenv(c.API.TokenEnv) == "" {
 		add("api.token_env", "api.token_env names environment variable %s, but it is not set", c.API.TokenEnv)
 	}
+	if sd := c.Shutdown; sd != nil {
+		names := c.UPSNames()
+		for _, u := range sd.UPS {
+			if _, ok := c.UPS[u]; !ok {
+				add("shutdown.ups", "shutdown.ups: no UPS named %q%s (configured: %s)", u, suggest.DidYouMean(u, names), strings.Join(names, ", "))
+			}
+		}
+		if len(c.Supplies()) == 0 {
+			add("shutdown", "shutdown is set but no UPS is configured")
+		}
+		if sd.MinSupplies < 1 || sd.MinSupplies > max(1, len(c.Supplies())) {
+			add("shutdown.min_supplies", "shutdown.min_supplies must be between 1 and the number of UPSes powering this computer (%d)", len(c.Supplies()))
+		}
+		w := sd.When
+		if !*w.LowBattery && w.OnBatteryFor == 0 && w.RuntimeBelow == 0 && w.ChargeBelow == 0 {
+			add("shutdown.when", "shutdown.when: nothing would trigger a shutdown; keep low_battery: true or set on_battery_for, runtime_below or charge_below")
+		}
+		if w.ChargeBelow < 0 || w.ChargeBelow >= 100 {
+			add("shutdown.when.charge_below", "shutdown.when.charge_below must be between 0 and 100")
+		}
+		for key, d := range map[string]time.Duration{"when.on_battery_for": w.OnBatteryFor, "when.runtime_below": w.RuntimeBelow,
+			"dead_time": sd.DeadTime, "wait_for_secondaries": sd.WaitForSecondaries, "final_delay": sd.FinalDelay,
+			"hook_timeout": sd.HookTimeout, "ups_off_delay": sd.UPSOffDelay} {
+			if d < 0 {
+				add("shutdown."+key, "shutdown.%s must not be negative", key)
+			}
+		}
+		if sd.PowerOffUPS && sd.UPSOffDelay < 10*time.Second {
+			add("shutdown.ups_off_delay", "shutdown.ups_off_delay must be at least 10s, so this computer finishes shutting down before the UPS cuts power")
+		}
+		for i, h := range sd.Hooks {
+			if strings.TrimSpace(h) == "" {
+				add("shutdown.hooks", "shutdown.hooks[%d] is empty", i)
+			}
+		}
+	}
+
 	levels := []string{"debug", "info", "warn", "error"}
 	if !slices.Contains(levels, c.Log.Level) {
 		add("log.level", "log.level %q is not one of %s%s", c.Log.Level, strings.Join(levels, ", "), suggest.DidYouMean(c.Log.Level, levels))

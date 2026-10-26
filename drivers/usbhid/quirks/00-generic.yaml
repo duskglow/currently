@@ -246,3 +246,27 @@ commands:
   test.battery.stop:
     paths: [UPS.BatterySystem.Test, UPS.Battery.Test, UPS.Output.Test]
     value: 3
+
+  # Power commands. They cut the UPS's output, so nutng uses them only when
+  # the shutdown policy sets power_off_ups. Delays are in seconds; a delay
+  # the UPS cannot represent (some count in minutes) is refused rather than
+  # rounded, because rounding down to 0 would cut power at once.
+  load.off.delay:
+    description: Turn off the load after a delay (seconds, default 20)
+    writes:
+      - paths: [UPS.PowerSummary.DelayBeforeShutdown, UPS.Output.DelayBeforeShutdown, UPS.OutletSystem.Outlet.DelayBeforeShutdown]
+        param: true
+        default: 20
+  shutdown.return:
+    description: Turn off the load after a delay (seconds, default 20), and turn it back on when mains power returns
+    writes:
+      - paths: [UPS.PowerSummary.DelayBeforeStartup, UPS.Output.DelayBeforeStartup, UPS.OutletSystem.Outlet.DelayBeforeStartup]
+        physical: 60
+      - paths: [UPS.PowerSummary.DelayBeforeShutdown, UPS.Output.DelayBeforeShutdown, UPS.OutletSystem.Outlet.DelayBeforeShutdown]
+        param: true
+        default: 20
+  shutdown.stop:
+    description: Cancel a pending load.off.delay or shutdown.return
+    writes:
+      - paths: [UPS.PowerSummary.DelayBeforeShutdown, UPS.Output.DelayBeforeShutdown, UPS.OutletSystem.Outlet.DelayBeforeShutdown]
+        value: -1

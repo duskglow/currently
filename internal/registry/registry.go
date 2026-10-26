@@ -6,6 +6,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/nut-ng/nut-ng/drivers/nutclient"
 	"github.com/nut-ng/nut-ng/drivers/simulator"
 	"github.com/nut-ng/nut-ng/drivers/usbhid"
 	"github.com/nut-ng/nut-ng/pkg/sdk"
@@ -28,6 +29,7 @@ func Builtin() *Registry {
 	r := New()
 	r.AddDriver(usbhid.New())
 	r.AddDriver(usbhid.NewReplay())
+	r.AddDriver(nutclient.New())
 	r.AddDriver(simulator.New())
 	return r
 }

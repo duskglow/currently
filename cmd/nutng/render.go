@@ -207,10 +207,16 @@ func eventLine(p painter, e sdk.Event) string {
 		color = term.Red
 	case sdk.EventOnLine, sdk.EventCommRestored:
 		color = term.Green
+	case sdk.EventShutdown:
+		color = term.Cyan
+	}
+	who := e.UPS
+	if who == "" {
+		who = "nutng"
 	}
 	return fmt.Sprintf("%s  %s  %s  %s",
 		p.paint(term.Dim, e.Time.Local().Format("15:04:05")),
-		e.UPS,
+		who,
 		p.paint(color, strings.ReplaceAll(string(e.Type), "_", " ")),
 		e.Message)
 }

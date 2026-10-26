@@ -38,9 +38,19 @@ type flagBinding struct {
 }
 
 type cmdBinding struct {
-	cmd   sdk.Command
+	cmd    sdk.Command
+	writes []writeBinding
+}
+
+type writeBinding struct {
 	field *hid.Field
-	value int64
+	rule  CommandWrite
+}
+
+// Write is one field write produced by a command.
+type Write struct {
+	Path  string
+	Value int64
 }
 
 // NewMapper binds quirk rules to the fields the device has. Later quirk
@@ -103,12 +113,21 @@ func NewMapper(info DeviceInfo, fields []hid.Field, quirks []*QuirkFile) *Mapper
 	}
 
 	for name, r := range cmds {
-		if f := first(r.Paths); f != nil && f.Type == hid.Feature {
-			c := sdk.NewCommand(name)
-			if r.Description != "" {
-				c.Description = r.Description
+		b := cmdBinding{cmd: sdk.NewCommand(name)}
+		if r.Description != "" {
+			b.cmd.Description = r.Description
+		}
+		ok := true
+		for _, w := range r.writes() {
+			f := first(w.Paths)
+			if f == nil || f.Type != hid.Feature {
+				ok = false // every write must be possible
+				break
 			}
-			m.commands[name] = cmdBinding{cmd: c, field: f, value: r.Value}
+			b.writes = append(b.writes, writeBinding{field: f, rule: w})
+		}
+		if ok {
+			m.commands[name] = b
 		}
 	}
 	return m
@@ -128,7 +147,9 @@ func (m *Mapper) Unmapped(fields []hid.Field) []string {
 		used[f.field.Path] = true
 	}
 	for _, c := range m.commands {
-		used[c.field.Path] = true
+		for _, w := range c.writes {
+			used[w.field.Path] = true
+		}
 	}
 	seen := map[string]bool{}
 	var out []string
@@ -280,13 +301,57 @@ func (m *Mapper) Writable() []string {
 	return out
 }
 
-// Command returns the field write for an instant command.
-func (m *Mapper) Command(name string) (path string, raw int64, err error) {
+// Command returns the field writes for an instant command. param is the
+// command's parameter, such as a delay in seconds.
+func (m *Mapper) Command(name, param string) ([]Write, error) {
 	c, ok := m.commands[name]
 	if !ok {
-		return "", 0, fmt.Errorf("command %q: %w", name, sdk.ErrNotSupported)
+		return nil, fmt.Errorf("command %q: %w", name, sdk.ErrNotSupported)
 	}
-	return c.field.Path, c.value, nil
+	var out []Write
+	for _, w := range c.writes {
+		f, r := w.field, w.rule
+		switch {
+		case r.Value != nil:
+			out = append(out, Write{f.Path, *r.Value})
+			continue
+		case r.Physical != nil:
+			raw, err := exactRaw(f, *r.Physical)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", name, err)
+			}
+			out = append(out, Write{f.Path, raw})
+			continue
+		}
+		v := r.Default
+		if strings.TrimSpace(param) != "" {
+			p, err := strconv.ParseFloat(strings.TrimSpace(param), 64)
+			if err != nil {
+				return nil, fmt.Errorf("%s: parameter must be a number, got %q: %w", name, param, sdk.ErrInvalid)
+			}
+			v = p
+		}
+		raw, err := exactRaw(f, v)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", name, err)
+		}
+		out = append(out, Write{f.Path, raw})
+	}
+	return out, nil
+}
+
+// exactRaw converts a physical value to raw, refusing values the device
+// cannot represent within 10% (for example a 20 s delay on a UPS that
+// counts delays in minutes, which would round to 0: power off now).
+func exactRaw(f *hid.Field, v float64) (int64, error) {
+	raw := f.Raw(v)
+	got := f.Physical(raw)
+	if math.Abs(got-v) > math.Max(0.5, math.Abs(v)*0.1) {
+		step := f.Physical(1) - f.Physical(0)
+		return 0, fmt.Errorf("%s cannot be set to %s; the device works in steps of %s (nearest %s): %w",
+			f.Path, formatNumber(v, nil), formatNumber(step, nil), formatNumber(got, nil), sdk.ErrInvalid)
+	}
+	return raw, nil
 }
 
 // SetVar returns the field write for setting a variable.

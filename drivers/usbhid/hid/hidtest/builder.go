@@ -57,6 +57,8 @@ func (b *Builder) Input(flags uint32) *Builder   { return b.uitem(0, 0x8, flags)
 func (b *Builder) Collection(kind byte) *Builder { return b.uitem(0, 0xA, uint32(kind)) }
 func (b *Builder) EndCollection() *Builder       { return b.uitem(0, 0xC, 0) }
 func (b *Builder) UnitExponent(e int8) *Builder  { return b.uitem(1, 0x5, uint32(uint8(e))&0xF) }
+func (b *Builder) PhysicalMin(v int32) *Builder  { return b.item(1, 0x3, int64(v)) }
+func (b *Builder) PhysicalMax(v int32) *Builder  { return b.item(1, 0x4, int64(v)) }
 
 // Data/variable/absolute flags for Input and Feature items.
 const (
@@ -65,10 +67,15 @@ const (
 )
 
 // Value adds one variable field in its own report: a collection-less
-// shorthand for the common UPS layout.
+// shorthand for the common UPS layout. It has no physical range.
 func (b *Builder) Value(page, usage uint16, id uint8, bits uint32, lmin, lmax int32, unit uint32, exp int8) *Builder {
+	return b.Scaled(page, usage, id, bits, lmin, lmax, 0, 0, unit, exp)
+}
+
+// Scaled is Value with a physical range.
+func (b *Builder) Scaled(page, usage uint16, id uint8, bits uint32, lmin, lmax, pmin, pmax int32, unit uint32, exp int8) *Builder {
 	return b.ReportID(id).UsagePage(page).Usage(usage).
-		LogicalMin(lmin).LogicalMax(lmax).Unit(unit).UnitExponent(exp).
+		LogicalMin(lmin).LogicalMax(lmax).PhysicalMin(pmin).PhysicalMax(pmax).Unit(unit).UnitExponent(exp).
 		ReportSize(bits).ReportCount(1).Feature(Var)
 }
 
@@ -140,7 +147,9 @@ func CyberPower() ([]byte, map[string]int64) {
 	b.Value(pd, 0x33, 0x1d, 16, 0, 2000, hid.UnitWatt, 7)
 	b.Value(pd, 0x44, 0x18, 16, 0, 2000, hid.UnitWatt, 7)
 	b.Value(pd, 0x58, 0x14, 8, 0, 6, 0, 0) // Test
-	b.Value(pd, 0x57, 0x15, 16, -1, 32767, hid.UnitSecond, 0)
+	// Delays count in minutes: the physical range is 60 times the logical.
+	b.Scaled(pd, 0x57, 0x15, 16, -1, 32767, -60, 1966020, hid.UnitSecond, 0)
+	b.Scaled(pd, 0x56, 0x16, 16, -1, 32767, -60, 1966020, hid.UnitSecond, 0)
 	b.Value(pd, 0x53, 0x10, 8, 97, 103, hid.UnitVolt, 7)
 	b.Flags(0x17, pd, 0x65, 0x6e) // Overload, Boost
 	b.EndCollection()
@@ -171,6 +180,7 @@ func CyberPower() ([]byte, map[string]int64) {
 		"UPS.Output.ConfigActivePower":                               1000,
 		"UPS.Output.Test":                                            6,
 		"UPS.Output.DelayBeforeShutdown":                             -1,
+		"UPS.Output.DelayBeforeStartup":                              -1,
 		"UPS.Output.LowVoltageTransfer":                              100,
 		"UPS.Output.Overload":                                        0,
 		"UPS.Output.Boost":                                           0,

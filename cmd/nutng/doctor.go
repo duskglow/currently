@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -16,9 +17,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/nut-ng/nut-ng/drivers/nutclient"
 	"github.com/nut-ng/nut-ng/drivers/usbhid"
 	"github.com/nut-ng/nut-ng/internal/client"
 	"github.com/nut-ng/nut-ng/internal/config"
+	"github.com/nut-ng/nut-ng/internal/policy"
 	"github.com/nut-ng/nut-ng/internal/registry"
 	"github.com/nut-ng/nut-ng/internal/svcmgr"
 	"github.com/nut-ng/nut-ng/internal/term"
@@ -89,6 +92,7 @@ func (d *doctor) run() {
 	if reachable {
 		d.checkUPSes(list)
 	}
+	d.checkShutdown(cfg, list)
 	d.checkNUT()
 }
 
@@ -288,6 +292,71 @@ func (d *doctor) checkUPSes(list []sdk.UPS) {
 			}
 			d.add(checkFail, "UPS", fmt.Sprintf("%s: %s: %s", u.Name, u.State, u.LastError), fix)
 		}
+	}
+}
+
+// checkShutdown reviews the shutdown policy.
+func (d *doctor) checkShutdown(cfg *config.Config, list []sdk.UPS) {
+	sd := cfg.Shutdown
+	if sd == nil {
+		d.add(checkWarn, "Shutdown", "no shutdown policy: nutng will not shut this computer down when the battery runs out",
+			"add a shutdown section to nutng.yaml; `nutng test shutdown` shows an example")
+		return
+	}
+	problems := false
+	if sd.DryRun {
+		d.add(checkWarn, "Shutdown", "dry_run is on: nutng logs each shutdown step but does none of them",
+			"remove dry_run from the shutdown section when you are done testing")
+		problems = true
+	}
+	if sd.Command == "" {
+		if why := policy.BuiltinBlocked(); why != "" {
+			d.add(checkWarn, "Shutdown", "the operating system shutdown command is blocked ("+why+")",
+				"unset "+policy.NeverShutdownEnv+" when you are done testing")
+			problems = true
+		}
+		if _, err := exec.LookPath(policy.DefaultCommand()[0]); err != nil {
+			d.add(checkFail, "Shutdown", fmt.Sprintf("the shutdown command %s was not found", policy.DefaultCommand()[0]),
+				"set shutdown.command to this system's shutdown command")
+			problems = true
+		}
+	}
+	commands := map[string]map[string]bool{}
+	for _, u := range list {
+		commands[u.Name] = map[string]bool{}
+		for _, c := range u.Commands {
+			commands[u.Name][c.Name] = true
+		}
+	}
+	simulated := true
+	for _, name := range cfg.Supplies() {
+		u := cfg.UPS[name]
+		if u.Driver != "simulator" && u.Driver != "replay" {
+			simulated = false
+		}
+		if u.Driver == nutclient.DriverName && u.Options["username"] == nil {
+			d.add(checkWarn, "Shutdown", fmt.Sprintf("UPS %s has no username, so its primary will not wait for this computer before cutting power", name),
+				"add username and password (a secondary user on that server) to the "+name+" block")
+			problems = true
+		}
+		if sd.PowerOffUPS && u.Driver != nutclient.DriverName {
+			if cmds, ok := commands[name]; ok && !cmds["shutdown.return"] {
+				d.add(checkWarn, "Shutdown", fmt.Sprintf("power_off_ups is on, but UPS %s does not support shutdown.return", name),
+					"turn power_off_ups off, or check the UPS with `nutng cmd "+name+"`")
+				problems = true
+			}
+		}
+	}
+	switch {
+	case simulated && sd.Command == "":
+		d.add(checkInfo, "Shutdown", "every UPS powering this computer is simulated, so a shutdown is only a rehearsal")
+		return
+	case simulated:
+		d.add(checkInfo, "Shutdown", "every UPS powering this computer is simulated; in a simulated outage the hooks and your shutdown.command still run")
+		return
+	}
+	if !problems {
+		d.add(checkOK, "Shutdown", fmt.Sprintf("armed for %s; `nutng test shutdown` shows every step", strings.Join(cfg.Supplies(), ", ")))
 	}
 }
 

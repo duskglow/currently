@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nut-ng/nut-ng/internal/nutwire"
 	"github.com/nut-ng/nut-ng/pkg/sdk"
 )
 
@@ -115,6 +116,19 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	}
 }
 
+// Clients returns the addresses of the clients logged in to a UPS (NUT's
+// LOGIN, as upsmon does), sorted.
+func (s *Server) Clients(ups string) []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []string
+	for c := range s.logins[ups] {
+		out = append(out, c.addr)
+	}
+	sort.Strings(out)
+	return out
+}
+
 func (s *Server) drop(c *conn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -159,7 +173,7 @@ func (c *conn) serve() {
 		if err != nil {
 			return
 		}
-		args, err := split(strings.TrimRight(string(line), "\r\n"))
+		args, err := nutwire.Split(strings.TrimRight(string(line), "\r\n"))
 		switch {
 		case err != nil:
 			c.send("ERR INVALID-ARGUMENT")
@@ -371,7 +385,7 @@ func (c *conn) get(args []string) {
 			c.send("ERR UNKNOWN-UPS")
 			return
 		}
-		c.send("UPSDESC %s %s", ups, quote(description(u)))
+		c.send("UPSDESC %s %s", ups, nutwire.Quote(description(u)))
 	case "VAR", "TYPE", "DESC":
 		if len(args) != 3 {
 			c.send("ERR INVALID-ARGUMENT")
@@ -389,7 +403,7 @@ func (c *conn) get(args []string) {
 		}
 		switch what {
 		case "VAR":
-			c.send("VAR %s %s %s", ups, name, quote(v.Value))
+			c.send("VAR %s %s %s", ups, name, nutwire.Quote(v.Value))
 		case "TYPE":
 			c.send("TYPE %s %s %s", ups, name, varType(v))
 		case "DESC":
@@ -397,7 +411,7 @@ func (c *conn) get(args []string) {
 			if spec, ok := sdk.LookupVar(name); ok {
 				desc = spec.Description
 			}
-			c.send("DESC %s %s %s", ups, name, quote(desc))
+			c.send("DESC %s %s %s", ups, name, nutwire.Quote(desc))
 		}
 	case "CMDDESC":
 		if len(args) != 3 {
@@ -415,7 +429,7 @@ func (c *conn) get(args []string) {
 				if desc == "" {
 					desc = "Description unavailable"
 				}
-				c.send("CMDDESC %s %s %s", ups, cmd.Name, quote(desc))
+				c.send("CMDDESC %s %s %s", ups, cmd.Name, nutwire.Quote(desc))
 				return
 			}
 		}
@@ -461,7 +475,7 @@ func (c *conn) list(args []string) {
 	if what == "UPS" {
 		c.send("BEGIN LIST UPS")
 		for _, u := range c.s.host.ListUPS() {
-			c.send("UPS %s %s", u.Name, quote(description(u)))
+			c.send("UPS %s %s", u.Name, nutwire.Quote(description(u)))
 		}
 		c.send("END LIST UPS")
 		return
@@ -486,7 +500,7 @@ func (c *conn) list(args []string) {
 		sort.Strings(names)
 		c.send("BEGIN LIST %s %s", what, ups)
 		for _, k := range names {
-			c.send("%s %s %s %s", what, ups, k, quote(u.Vars[k].Value))
+			c.send("%s %s %s %s", what, ups, k, nutwire.Quote(u.Vars[k].Value))
 		}
 		c.send("END LIST %s %s", what, ups)
 	case "CMD":

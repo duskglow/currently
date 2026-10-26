@@ -28,6 +28,14 @@ type model struct {
 	manual     *bool         // forced mains state set by sim.power.* commands
 	testUntil  time.Duration // battery test runs until this simulated time
 	testResult string
+
+	// Power commands (load.off.delay, shutdown.return): the output goes off
+	// at offAt; with returnAfter set, it comes back that long after mains
+	// power is present.
+	offAt       time.Duration // 0: none pending
+	cutOff      bool          // output cut by a command
+	returnAfter time.Duration // 0: stay off
+	backAt      time.Duration // 0: not scheduled
 }
 
 const (
@@ -90,6 +98,7 @@ func (m *model) step(dt time.Duration) {
 		m.testResult = "Done and passed"
 	}
 	m.onBattery = !m.mainsUp()
+	m.stepPower()
 	secs := dt.Seconds()
 	if m.onBattery {
 		if !m.outputOff {
@@ -100,9 +109,42 @@ func (m *model) step(dt time.Duration) {
 			m.outputOff = true // battery exhausted: the UPS cuts the load
 		}
 	} else {
-		m.outputOff = false
+		m.outputOff = m.cutOff
 		m.charge = math.Min(100, m.charge+100/m.opts.RechargeTime.Seconds()*secs)
 	}
+	if m.cutOff {
+		m.outputOff = true
+	}
+}
+
+// stepPower carries out pending power commands.
+func (m *model) stepPower() {
+	if m.offAt > 0 && m.elapsed >= m.offAt {
+		m.offAt, m.cutOff = 0, true
+	}
+	if !m.cutOff || m.returnAfter == 0 {
+		return
+	}
+	switch {
+	case m.onBattery:
+		m.backAt = 0
+	case m.backAt == 0:
+		m.backAt = m.elapsed + m.returnAfter
+	case m.elapsed >= m.backAt:
+		m.cutOff, m.returnAfter, m.backAt = false, 0, 0
+	}
+}
+
+// timers returns ups.timer.shutdown and ups.timer.start in seconds, or -1.
+func (m *model) timers() (shutdown, start float64) {
+	shutdown, start = -1, -1
+	if m.offAt > 0 {
+		shutdown = (m.offAt - m.elapsed).Seconds()
+	}
+	if m.backAt > 0 {
+		start = (m.backAt - m.elapsed).Seconds()
+	}
+	return
 }
 
 func (m *model) status() sdk.Status {
@@ -155,6 +197,7 @@ func (m *model) vars() map[string]string {
 		result = "In progress"
 	}
 	realNominal := o.PowerNominal * powerFactor
+	timerShutdown, timerStart := m.timers()
 
 	return map[string]string{
 		"device.mfr":              o.Manufacturer,
@@ -176,6 +219,8 @@ func (m *model) vars() map[string]string {
 		"ups.test.result":         result,
 		"ups.delay.shutdown":      "20",
 		"ups.delay.start":         "30",
+		"ups.timer.shutdown":      f0(timerShutdown),
+		"ups.timer.start":         f0(timerStart),
 		"battery.charge":          f0(m.charge),
 		"battery.charge.low":      f0(m.lowCharge),
 		"battery.runtime":         f0(m.runtime()),

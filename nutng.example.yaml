@@ -39,6 +39,23 @@ listen:
 #     password_env: NUTNG_UPSMON_PASSWORD   # or password: ...
 #     role: primary            # secondary (watch), primary (may set FSD), admin (+ commands)
 
+# Shut this computer down when the UPS is about to run out. Without this
+# section, nutng only monitors. `nutng test shutdown` shows every step.
+# shutdown:
+#   ups: [rack]                # UPSes powering this computer (default: all)
+#   when:
+#     low_battery: true        # the UPS's own low-battery signal (default)
+#     on_battery_for: 5m       # or after this long on battery
+#     runtime_below: 5m        # or when less runtime than this is left
+#     charge_below: 20         # or when the charge drops below this (%)
+#   hooks:                     # commands to run first
+#     - /usr/local/bin/stop-vms
+#   wait_for_secondaries: 15s  # as primary: wait for NUT clients after FSD
+#   power_off_ups: false       # cut UPS power after ups_off_delay, restore on mains
+#   ups_off_delay: 60s
+#   command: ""                # replace the OS shutdown command
+#   dry_run: false             # log each step without doing it
+
 api:
   # Commands and variable changes over HTTP need this bearer token.
   # Without one, the HTTP API is read-only.

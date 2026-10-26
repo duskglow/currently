@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,11 +10,23 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/nut-ng/nut-ng/internal/client"
 	"github.com/nut-ng/nut-ng/internal/term"
 )
 
 func (a *app) painter() painter {
 	return painter{on: a.stdout == os.Stdout && term.UseColor(os.Stdout)}
+}
+
+// printShutdownLine prints the shutdown policy's state, if the daemon
+// reports it.
+func (a *app) printShutdownLine(ctx context.Context, c *client.Client, out io.Writer) {
+	st, err := c.Shutdown(ctx)
+	if err != nil {
+		return
+	}
+	line, color := shutdownLine(st)
+	fmt.Fprintf(out, "  %-11s %s\n", "Shutdown", a.painter().paint(color, line))
 }
 
 func writeJSON(w io.Writer, v any) error {
@@ -47,6 +60,7 @@ func (a *app) statusCmd() *cobra.Command {
 					return writeJSON(out, u)
 				}
 				writeDetail(out, a.painter(), u, time.Now())
+				a.printShutdownLine(cmd.Context(), c, out)
 				return nil
 			}
 
@@ -66,8 +80,11 @@ func (a *app) statusCmd() *cobra.Command {
 				fmt.Fprintf(out, noUPSHelp, path)
 			case len(list) == 1:
 				writeDetail(out, a.painter(), list[0], time.Now())
+				a.printShutdownLine(cmd.Context(), c, out)
 			default:
 				writeStatusTable(out, a.painter(), list)
+				fmt.Fprintln(out)
+				a.printShutdownLine(cmd.Context(), c, out)
 			}
 			return nil
 		},

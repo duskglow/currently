@@ -140,6 +140,9 @@ var commands = []sdk.Command{
 	sdk.NewCommand("test.battery.start"),
 	sdk.NewCommand("test.battery.start.quick"),
 	sdk.NewCommand("test.battery.stop"),
+	{Name: "load.off.delay", Description: "Turn off the load after a delay (seconds, default 20)"},
+	{Name: "shutdown.return", Description: "Turn off the load after a delay (seconds, default 20), and back on when mains power returns"},
+	{Name: "shutdown.stop", Description: "Cancel a pending load.off.delay or shutdown.return"},
 	{Name: "sim.power.fail", Description: "Simulate a mains power failure"},
 	{Name: "sim.power.restore", Description: "End a simulated power failure"},
 	{Name: "sim.power.auto", Description: "Return mains power to the configured scenario"},
@@ -185,10 +188,24 @@ func (d *device) Watch(ctx context.Context, sink func(sdk.Update)) error {
 func (d *device) Commands() []sdk.Command { return commands }
 func (d *device) Writable() []string      { return writable }
 
-func (d *device) RunCommand(_ context.Context, name, _ string) error {
+func (d *device) RunCommand(_ context.Context, name, param string) error {
+	delay := 20 * time.Second
+	if p := strings.TrimSpace(param); p != "" {
+		secs, err := strconv.ParseFloat(p, 64)
+		if err != nil || secs < 0 {
+			return fmt.Errorf("%s: delay must be a number of seconds, got %q: %w", name, param, sdk.ErrInvalid)
+		}
+		delay = time.Duration(secs * float64(time.Second))
+	}
 	d.mu.Lock()
 	m := d.m
 	switch name {
+	case "load.off.delay":
+		m.offAt, m.returnAfter = m.elapsed+max(delay, time.Millisecond), 0
+	case "shutdown.return":
+		m.offAt, m.returnAfter = m.elapsed+max(delay, time.Millisecond), 30*time.Second
+	case "shutdown.stop":
+		m.offAt = 0
 	case "beeper.enable":
 		m.beeper = true
 	case "beeper.disable":
