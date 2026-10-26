@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"os"
 	"regexp"
@@ -22,10 +23,11 @@ import (
 
 // Config is the whole nutng.yaml file.
 type Config struct {
-	UPS    map[string]UPS `yaml:"ups"`
-	Listen Listen         `yaml:"listen"`
-	API    API            `yaml:"api"`
-	Log    Log            `yaml:"log"`
+	UPS    map[string]UPS  `yaml:"ups"`
+	Listen Listen          `yaml:"listen"`
+	API    API             `yaml:"api"`
+	Users  map[string]User `yaml:"users,omitempty"`
+	Log    Log             `yaml:"log"`
 
 	// Path is the file the config was loaded from; empty for defaults.
 	Path string `yaml:"-"`
@@ -49,9 +51,50 @@ type UPS struct {
 type Listen struct {
 	// HTTP is the address of the REST API, or "off".
 	HTTP string `yaml:"http"`
+	// NUT is the address of the NUT protocol server (upsd compatible), or
+	// "off".
+	NUT string `yaml:"nut"`
+	// NUTTLS enables STARTTLS on the NUT protocol server.
+	NUTTLS *TLS `yaml:"nut_tls,omitempty"`
+	// Metrics is empty to serve Prometheus metrics at /metrics on the HTTP
+	// address, a separate host:port, or "off".
+	Metrics string `yaml:"metrics,omitempty"`
 	// Control is the local socket the nutng CLI talks to. Empty selects a
 	// default path.
 	Control string `yaml:"control,omitempty"`
+}
+
+// TLS names a certificate and key in PEM files.
+type TLS struct {
+	CertFile string `yaml:"cert_file"`
+	KeyFile  string `yaml:"key_file"`
+}
+
+// User is an account for the NUT protocol server, as in NUT's upsd.users.
+type User struct {
+	Password    string `yaml:"password,omitempty"`
+	PasswordEnv string `yaml:"password_env,omitempty"`
+	// Role is secondary (upsmon on a machine that only watches), primary
+	// (upsmon on the machine attached to the UPS; may set FSD) or admin
+	// (primary, plus commands and variable changes).
+	Role string `yaml:"role"`
+}
+
+// Roles of NUT users.
+const (
+	RoleSecondary = "secondary"
+	RolePrimary   = "primary"
+	RoleAdmin     = "admin"
+)
+
+var roleAliases = map[string]string{"slave": RoleSecondary, "master": RolePrimary}
+
+// Secret returns the effective password.
+func (u User) Secret() string {
+	if u.PasswordEnv != "" {
+		return os.Getenv(u.PasswordEnv)
+	}
+	return u.Password
 }
 
 // API sets access to the REST API over the network.
@@ -72,17 +115,21 @@ type Log struct {
 // Defaults.
 const (
 	DefaultHTTP       = "127.0.0.1:9300"
+	DefaultNUT        = "127.0.0.1:3493"
 	DefaultDriver     = "usbhid"
 	DefaultStaleAfter = 30 * time.Second
 )
 
 // knownKeys lists the keys allowed in each fixed section, for typo hints.
 var knownKeys = map[string][]string{
-	"":       {"ups", "listen", "api", "log"},
-	"listen": {"http", "control"},
-	"api":    {"token", "token_env"},
-	"log":    {"level", "format"},
+	"":               {"ups", "listen", "api", "users", "log"},
+	"listen":         {"http", "nut", "nut_tls", "metrics", "control"},
+	"listen.nut_tls": {"cert_file", "key_file"},
+	"api":            {"token", "token_env"},
+	"log":            {"level", "format"},
 }
+
+var userKeys = []string{"password", "password_env", "role"}
 
 var upsNameRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]*$`)
 
@@ -93,7 +140,7 @@ func ValidUPSName(name string) bool { return upsNameRE.MatchString(name) }
 func Default() *Config {
 	return &Config{
 		UPS:    map[string]UPS{},
-		Listen: Listen{HTTP: DefaultHTTP},
+		Listen: Listen{HTTP: DefaultHTTP, NUT: DefaultNUT},
 		Log:    Log{Level: "info", Format: "text"},
 		lines:  map[string]int{},
 	}
@@ -140,8 +187,16 @@ func Parse(path string, data []byte) (*Config, error) {
 	if c.UPS == nil {
 		c.UPS = map[string]UPS{}
 	}
-	if strings.EqualFold(c.Listen.HTTP, "off") {
-		c.Listen.HTTP = ""
+	for _, addr := range []*string{&c.Listen.HTTP, &c.Listen.NUT} {
+		if strings.EqualFold(*addr, "off") {
+			*addr = ""
+		}
+	}
+	for name, u := range c.Users {
+		if r, ok := roleAliases[strings.ToLower(u.Role)]; ok {
+			u.Role = r
+			c.Users[name] = u
+		}
 	}
 	for name, u := range c.UPS {
 		if u.Driver == "" {
@@ -162,6 +217,9 @@ func (c *Config) walk(n *yaml.Node, path string, problems *[]Problem) {
 		return
 	}
 	known, checked := knownKeys[path]
+	if strings.HasPrefix(path, "users.") && strings.Count(path, ".") == 1 {
+		known, checked = userKeys, true
+	}
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		key, val := n.Content[i], n.Content[i+1]
 		full := key.Value
@@ -182,7 +240,7 @@ func (c *Config) walk(n *yaml.Node, path string, problems *[]Problem) {
 		case path == "ups":
 			c.Order = append(c.Order, key.Value)
 			c.walk(val, full, problems) // record option lines; options are checked by the driver
-		case path == "" || strings.HasPrefix(full, "ups."):
+		case path == "" || path == "listen" || path == "users" || strings.HasPrefix(full, "ups."):
 			c.walk(val, full, problems)
 		}
 	}
@@ -230,11 +288,54 @@ func (c *Config) Validate(reg *registry.Registry) error {
 		}
 	}
 
-	if c.Listen.HTTP != "" {
-		if _, port, err := net.SplitHostPort(c.Listen.HTTP); err != nil {
-			add("listen.http", "listen.http %q is not a host:port address (for example %q, or \":9300\" for all interfaces), or \"off\"", c.Listen.HTTP, DefaultHTTP)
+	checkAddr := func(key, addr, example string) {
+		if _, port, err := net.SplitHostPort(addr); err != nil {
+			add(key, "%s %q is not a host:port address (for example %q, or %q for all interfaces), or \"off\"",
+				key, addr, example, example[strings.LastIndex(example, ":"):])
 		} else if _, err := strconv.ParseUint(port, 10, 16); err != nil {
-			add("listen.http", "listen.http port %q is not a number between 0 and 65535", port)
+			add(key, "%s port %q is not a number between 0 and 65535", key, port)
+		}
+	}
+	if c.Listen.HTTP != "" {
+		checkAddr("listen.http", c.Listen.HTTP, DefaultHTTP)
+	}
+	if c.Listen.NUT != "" {
+		checkAddr("listen.nut", c.Listen.NUT, DefaultNUT)
+	}
+	switch m := strings.ToLower(c.Listen.Metrics); {
+	case m == "" || m == "off":
+		if m == "" && c.Listen.HTTP == "" {
+			add("listen.metrics", "metrics are served on listen.http, which is off; set listen.metrics to a host:port or \"off\"")
+		}
+	default:
+		checkAddr("listen.metrics", c.Listen.Metrics, "127.0.0.1:9301")
+	}
+	if t := c.Listen.NUTTLS; t != nil {
+		for key, f := range map[string]string{"cert_file": t.CertFile, "key_file": t.KeyFile} {
+			if f == "" {
+				add("listen.nut_tls", "listen.nut_tls.%s is required", key)
+			} else if _, err := os.Stat(f); err != nil {
+				add("listen.nut_tls."+key, "listen.nut_tls.%s: %v", key, err)
+			}
+		}
+	}
+	roles := []string{RoleSecondary, RolePrimary, RoleAdmin}
+	for _, name := range slices.Sorted(maps.Keys(c.Users)) {
+		u := c.Users[name]
+		key := "users." + name
+		if strings.ContainsAny(name, " 	\"") {
+			add(key, "user name %q must not contain spaces or quotes", name)
+		}
+		if !slices.Contains(roles, u.Role) {
+			add(key+".role", "user %s: role %q is not one of %s%s", name, u.Role, strings.Join(roles, ", "), suggest.DidYouMean(u.Role, roles))
+		}
+		switch {
+		case u.Password != "" && u.PasswordEnv != "":
+			add(key+".password", "user %s: set either password or password_env, not both", name)
+		case u.Password == "" && u.PasswordEnv == "":
+			add(key, "user %s: set password or password_env", name)
+		case u.PasswordEnv != "" && os.Getenv(u.PasswordEnv) == "":
+			add(key+".password_env", "user %s: password_env names environment variable %s, but it is not set", name, u.PasswordEnv)
 		}
 	}
 	if c.API.Token != "" && c.API.TokenEnv != "" {
@@ -317,6 +418,18 @@ func (c *Config) YAML() ([]byte, error) {
 	}
 	if out.Listen.HTTP == "" {
 		out.Listen.HTTP = "off"
+	}
+	if out.Listen.NUT == "" {
+		out.Listen.NUT = "off"
+	}
+	if len(out.Users) > 0 {
+		out.Users = map[string]User{}
+		for k, u := range c.Users {
+			if u.Password != "" {
+				u.Password = "<hidden>"
+			}
+			out.Users[k] = u
+		}
 	}
 	return yaml.Marshal(&out)
 }

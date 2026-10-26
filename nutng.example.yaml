@@ -24,8 +24,20 @@ ups:
     load: 35                   # percent
 
 listen:
-  http: 127.0.0.1:9300         # REST API; ":9300" for all interfaces, or "off"
+  http: 127.0.0.1:9300         # REST API and /metrics; ":9300" for all interfaces, or "off"
+  nut: 127.0.0.1:3493          # NUT protocol (upsc, upsmon, Home Assistant, NAS); or "off"
+  # metrics: 127.0.0.1:9301    # serve /metrics on its own port instead, or "off"
+  # nut_tls:                   # enable STARTTLS on the NUT protocol
+  #   cert_file: /etc/nutng/cert.pem
+  #   key_file: /etc/nutng/key.pem
   # control: /run/nutng/nutng.sock   # socket the nutng CLI uses
+
+# Accounts for the NUT protocol, like NUT's upsd.users. Reading needs no
+# login; upsmon and commands do.
+# users:
+#   upsmon:
+#     password_env: NUTNG_UPSMON_PASSWORD   # or password: ...
+#     role: primary            # secondary (watch), primary (may set FSD), admin (+ commands)
 
 api:
   # Commands and variable changes over HTTP need this bearer token.

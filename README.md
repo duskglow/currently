@@ -4,10 +4,11 @@ UPS monitoring that is easy to set up. One self-contained binary, one short
 config file, clear error messages, and an API that monitoring tools can
 query.
 
-> **Status:** early development (milestone 2 of 7). USB UPSes work on
-> Windows and Linux, along with the REST API and the CLI. The NUT
-> protocol, Prometheus, SNMP and shutdown handling are next. See
-> [docs/PLAN.md](docs/PLAN.md).
+> **Status:** early development (milestone 3 of 7). USB UPSes work on
+> Windows and Linux. nutng serves the NUT protocol, Prometheus metrics and
+> a REST API, and installs itself as a service. nutng's own shutdown
+> handling, plugins and SNMP are next; meanwhile NUT's upsmon works with
+> nutng for shutdowns. See [docs/PLAN.md](docs/PLAN.md).
 
 ## Get started
 
@@ -25,8 +26,16 @@ nutng init      # pick one, name it, and write nutng.yaml
 nutng serve     # run the daemon
 ```
 
-Without a config file, `nutng serve` monitors every USB UPS it finds. In
-another terminal:
+Without a config file, `nutng serve` monitors every USB UPS it finds. To
+run it at boot, install it as a service (as root, or in an Administrator
+terminal on Windows):
+
+```sh
+nutng service install    # also: start, stop, restart, status, uninstall
+nutng doctor             # check the whole setup, with fixes for problems
+```
+
+In another terminal:
 
 ```sh
 nutng status                     # summary, or detail when there is one UPS
@@ -80,7 +89,37 @@ your model without rebuilding, put a file in `quirks.d/` next to your
 
 ## Monitoring tools
 
-The REST API is read-only over the network unless you set a token:
+nutng speaks three protocols. All listen on this machine only until you
+change the addresses under `listen:` (for example `nut: ":3493"`).
+
+**NUT protocol** (port 3493): anything that works with NUT's upsd works
+with nutng: `upsc`, `upsmon`, Home Assistant's NUT integration, Synology
+and QNAP NAS "network UPS" settings, and Nagios/Icinga `check_ups`. It is
+tested against the real NUT 2.8 clients, including `upsmon` primary and
+secondary through a power failure
+([test/integration/nut-clients.sh](test/integration/nut-clients.sh)).
+
+```sh
+upsc cyberpower@localhost
+```
+
+Reading needs no login. upsmon and commands need a user:
+
+```yaml
+users:
+  upsmon:                       # for MONITOR lines in upsmon.conf
+    password_env: NUTNG_UPSMON_PASSWORD
+    role: primary               # secondary: watch only; primary: may set FSD
+  admin:
+    password: change-me
+    role: admin                 # primary, plus upscmd and upsrw
+```
+
+**Prometheus**: metrics are at `http://127.0.0.1:9300/metrics`, for
+example `nutng_battery_charge_percent`, `nutng_battery_runtime_seconds`,
+`nutng_ups_status{flag="OB"}` and `nutng_ups_up`.
+
+**REST API**: read-only over the network unless you set a token:
 
 ```sh
 curl http://127.0.0.1:9300/api/v1/ups
@@ -122,6 +161,9 @@ nutng.yaml:4: UPS rack (usbhid driver): unknown option "serail" (did you mean "s
 | `drivers/usbhid/quirks` | Field-to-variable mappings per vendor |
 | `drivers/simulator` | Simulated UPS |
 | `outputs/rest` | REST/JSON API and event stream |
+| `outputs/nutproto` | NUT protocol server (upsd compatible) |
+| `outputs/prometheus` | Prometheus metrics |
+| `internal/svcmgr` | Service install and control |
 
 ## Development
 
@@ -129,4 +171,5 @@ nutng.yaml:4: UPS rack (usbhid driver): unknown option "serail" (did you mean "s
 go test ./...
 go vet ./...
 NUTNG_HW=1 go test ./drivers/usbhid -run TestHardware -v   # with a UPS attached
+go build -o nutng ./cmd/nutng && test/integration/nut-clients.sh ./nutng   # Linux
 ```

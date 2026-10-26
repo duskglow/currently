@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,6 +37,7 @@ type upsState struct {
 	commands   []sdk.Command
 	writable   map[string]bool
 	history    map[string]*ring
+	fsd        bool // forced shutdown requested; kept in ups.status
 }
 
 // NewStore returns a store that publishes events on bus.
@@ -143,6 +145,18 @@ func (s *Store) Apply(name string, up sdk.Update) {
 			changed[k] = ""
 		}
 	}
+	if u.fsd {
+		if st := u.vars["ups.status"]; !sdk.ParseStatus(st.Value).Has(sdk.FlagForcedShutdown) {
+			st.Name, st.Updated = "ups.status", now
+			st.Value = strings.TrimSpace(st.Value + " " + string(sdk.FlagForcedShutdown))
+			u.vars["ups.status"] = st
+			if old := oldStatus.String(); st.Value == old {
+				delete(changed, "ups.status")
+			} else {
+				changed["ups.status"] = st.Value
+			}
+		}
+	}
 
 	if st, ok := changed["ups.status"]; ok {
 		events = append(events, statusEvents(name, oldStatus, sdk.ParseStatus(st), hadStatus)...)
@@ -184,6 +198,31 @@ func statusEvents(name string, old, cur sdk.Status, hadOld bool) []sdk.Event {
 		add(sdk.EventForcedShutdown, "UPS %s forced shutdown in progress")
 	}
 	return events
+}
+
+// SetFSD sets the forced-shutdown flag on a UPS.
+func (s *Store) SetFSD(name string) error {
+	s.mu.Lock()
+	u := s.ups[name]
+	if u == nil {
+		s.mu.Unlock()
+		return fmt.Errorf("UPS %q: %w", name, sdk.ErrNotFound)
+	}
+	if u.fsd {
+		s.mu.Unlock()
+		return nil
+	}
+	u.fsd = true
+	st := u.vars["ups.status"]
+	st.Name, st.Updated = "ups.status", s.now()
+	st.Value = strings.TrimSpace(st.Value + " " + string(sdk.FlagForcedShutdown))
+	u.vars["ups.status"] = st
+	s.mu.Unlock()
+
+	s.bus.Publish(sdk.Event{UPS: name, Type: sdk.EventUpdate, Changed: map[string]string{"ups.status": st.Value}})
+	s.bus.Publish(sdk.Event{UPS: name, Type: sdk.EventForcedShutdown,
+		Message: fmt.Sprintf("Forced shutdown requested for UPS %s", name)})
+	return nil
 }
 
 // SetFailed records that the driver failed and will be retried.

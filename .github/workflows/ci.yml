@@ -51,6 +51,18 @@ jobs:
           export GOOS="${TARGET%/*}" GOARCH="${TARGET#*/}"
           go build -o /dev/null ./cmd/nutng
 
+  nut-clients:
+    # The NUT protocol server against the real upsc/upscmd/upsrw/upsmon.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: sudo apt-get update && sudo apt-get install -y nut-client
+      - run: go build -o nutng ./cmd/nutng
+      - run: bash test/integration/nut-clients.sh ./nutng
+
   lint:
     runs-on: ubuntu-latest
     steps:

@@ -49,6 +49,8 @@ service HostService {
   rpc SubscribeEvents(SubscribeEventsRequest) returns (stream SubscribeEventsResponse);
   rpc RunUPSCommand(RunUPSCommandRequest) returns (RunUPSCommandResponse);
   rpc SetUPSVar(SetUPSVarRequest) returns (SetUPSVarResponse);
+  // Adds the FSD flag to the UPS status (requires the primary role).
+  rpc SetUPSForcedShutdown(SetUPSForcedShutdownRequest) returns (SetUPSForcedShutdownResponse);
 }
 
 message ListUPSRequest {}
@@ -100,3 +102,9 @@ message SetUPSVarRequest {
 }
 
 message SetUPSVarResponse {}
+
+message SetUPSForcedShutdownRequest {
+  string ups = 1;
+}
+
+message SetUPSForcedShutdownResponse {}

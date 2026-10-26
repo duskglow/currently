@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ import (
 	"github.com/nut-ng/nut-ng/internal/config"
 	"github.com/nut-ng/nut-ng/internal/daemon"
 	"github.com/nut-ng/nut-ng/internal/registry"
+	"github.com/nut-ng/nut-ng/internal/svcmgr"
 	"github.com/nut-ng/nut-ng/internal/version"
 )
 
@@ -56,11 +58,15 @@ mains power fails for one minute every three minutes.`,
 			if logFormat != "" {
 				cfg.Log.Format = logFormat
 			}
+			asService := !svcmgr.Interactive()
+			log := newLogger(cfg.Log, asService)
 			if err := cfg.Validate(registry.Builtin()); err != nil {
+				if asService {
+					log.Error("the config has problems", "error", err)
+				}
 				fmt.Fprintln(a.stderr, err)
 				return errors.New("the config has problems; fix them and try again (`nutng config validate` checks without starting)")
 			}
-			log := newLogger(cfg.Log)
 			if !found {
 				log.Info("no config file found; using defaults", "looked_for", config.DefaultPath())
 			}
@@ -68,14 +74,20 @@ mains power fails for one minute every three minutes.`,
 				log.Info("monitoring the USB UPSes found; run `nutng init` to save this as a config file", "ups", autodetected)
 			}
 
+			run := func(ctx context.Context) error {
+				return daemon.Run(ctx, daemon.Options{
+					Config:   cfg,
+					Registry: registry.Builtin(),
+					Log:      log,
+					Version:  version.String(),
+				})
+			}
+			if asService {
+				return svcmgr.Run(run, log)
+			}
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
-			return daemon.Run(ctx, daemon.Options{
-				Config:   cfg,
-				Registry: registry.Builtin(),
-				Log:      log,
-				Version:  version.String(),
-			})
+			return run(ctx)
 		},
 	}
 	f := cmd.Flags()
@@ -85,10 +97,17 @@ mains power fails for one minute every three minutes.`,
 	return cmd
 }
 
-func newLogger(c config.Log) *slog.Logger {
+// newLogger logs to stderr, or to the Windows Event Log when running as a
+// Windows service (elsewhere the service manager captures stderr).
+func newLogger(c config.Log, asService bool) *slog.Logger {
 	var level slog.Level
 	_ = level.UnmarshalText([]byte(c.Level))
 	opts := &slog.HandlerOptions{Level: level}
+	if asService && runtime.GOOS == "windows" {
+		if h, err := svcmgr.NewEventLogHandler(opts); err == nil {
+			return slog.New(h)
+		}
+	}
 	if c.Format == "json" {
 		return slog.New(slog.NewJSONHandler(os.Stderr, opts))
 	}

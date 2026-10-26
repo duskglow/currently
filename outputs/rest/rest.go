@@ -336,47 +336,6 @@ func writeHostError(w http.ResponseWriter, err error) {
 	writeError(w, status, err.Error())
 }
 
-// Output runs the API on a TCP address as an sdk.Output.
-type Output struct {
-	Version string
-}
-
-// Info implements sdk.Output.
-func (o *Output) Info() sdk.Info {
-	return sdk.Info{Name: "rest", Kind: sdk.KindOutput, Version: o.Version, Description: "REST/JSON API with an event stream"}
-}
-
-type outputConfig struct {
-	Addr  string `yaml:"addr"`
-	Token string `yaml:"token"`
-}
-
-// ValidateConfig implements sdk.Output.
-func (o *Output) ValidateConfig(cfg sdk.Config) error {
-	var c outputConfig
-	if err := cfg.Decode(&c); err != nil {
-		return err
-	}
-	if c.Addr == "" {
-		return errors.New("addr is required")
-	}
-	return nil
-}
-
-// Run implements sdk.Output.
-func (o *Output) Run(ctx context.Context, host sdk.Host, cfg sdk.Config, log *slog.Logger) error {
-	var c outputConfig
-	if err := cfg.Decode(&c); err != nil {
-		return err
-	}
-	ln, err := net.Listen("tcp", c.Addr)
-	if err != nil {
-		return fmt.Errorf("cannot listen on %s: %w (is another nutng or program using that port? change listen.http in nutng.yaml)", c.Addr, err)
-	}
-	log.Info("REST API listening", "addr", ln.Addr().String(), "changes_allowed", c.Token != "")
-	return Serve(ctx, ln, NewHandler(host, Options{Token: c.Token, Version: o.Version, Log: log}))
-}
-
 // Serve serves h on ln until ctx is cancelled, then shuts down gracefully.
 func Serve(ctx context.Context, ln net.Listener, h http.Handler) error {
 	srv := &http.Server{

@@ -154,3 +154,67 @@ func TestYAMLHidesToken(t *testing.T) {
 		t.Errorf("token visible in:\n%s", out)
 	}
 }
+
+func TestUsersAndListeners(t *testing.T) {
+	t.Setenv("NUTNG_TEST_UPSMON_PW", "s3cret")
+	src := `
+listen:
+  nut: ":3493"
+  metrics: 127.0.0.1:9301
+users:
+  upsmon:
+    password_env: NUTNG_TEST_UPSMON_PW
+    role: master
+  admin:
+    password: hunter2
+    role: admin
+`
+	c, err := Parse("nutng.yaml", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Validate(registry.Builtin()); err != nil {
+		t.Fatal(err)
+	}
+	if u := c.Users["upsmon"]; u.Role != RolePrimary || u.Secret() != "s3cret" {
+		t.Errorf("upsmon = %+v (master must map to primary)", u)
+	}
+	out, _ := c.YAML()
+	if strings.Contains(string(out), "hunter2") {
+		t.Errorf("password visible:\n%s", out)
+	}
+	d := Default()
+	if d.Listen.NUT != DefaultNUT {
+		t.Errorf("default NUT listener %q", d.Listen.NUT)
+	}
+}
+
+func TestUsersAndListenerErrors(t *testing.T) {
+	tests := []struct {
+		name, src string
+		want      []string
+	}{
+		{"bad role", "users:\n  u:\n    password: x\n    role: primray\n", []string{"nutng.yaml:4:", `did you mean "primary"`}},
+		{"no password", "users:\n  u:\n    role: primary\n", []string{"nutng.yaml:2:", "set password or password_env"}},
+		{"user key typo", "users:\n  u:\n    pasword: x\n", []string{"nutng.yaml:3:", `did you mean "password"`}},
+		{"bad nut addr", "listen:\n  nut: 3493\n", []string{"nutng.yaml:2:", "listen.nut"}},
+		{"metrics without http", "listen:\n  http: off\n", []string{"listen.metrics"}},
+		{"missing cert", "listen:\n  nut_tls:\n    cert_file: /nonexistent.pem\n    key_file: /nonexistent.key\n", []string{"cert_file"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := Parse("nutng.yaml", []byte(tt.src))
+			if err == nil {
+				err = c.Validate(registry.Builtin())
+			}
+			if err == nil {
+				t.Fatal("no error")
+			}
+			for _, w := range tt.want {
+				if !strings.Contains(err.Error(), w) {
+					t.Errorf("error %q does not contain %q", err, w)
+				}
+			}
+		})
+	}
+}

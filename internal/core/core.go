@@ -171,6 +171,15 @@ func (c *Core) SetVar(ctx context.Context, ups, variable, value string) error {
 	return nil
 }
 
+// SetForcedShutdown implements sdk.Host.
+func (c *Core) SetForcedShutdown(_ context.Context, ups string) error {
+	if _, ok := c.store.Get(ups); !ok {
+		return c.NotFoundError(ups)
+	}
+	c.log.Warn("forced shutdown (FSD) set", "ups", ups)
+	return c.store.SetFSD(ups)
+}
+
 func (c *Core) device(ups string) (*runner, sdk.Device, error) {
 	c.mu.Lock()
 	r := c.runners[ups]

@@ -82,6 +82,8 @@ Try it without hardware:
 		a.cmdCmd(),
 		a.setCmd(),
 		a.configCmd(),
+		a.serviceCmd(),
+		a.doctorCmd(),
 		a.debugCmd(),
 		a.versionCmd(),
 	)
@@ -107,6 +109,9 @@ func (a *app) loadConfig() (*config.Config, bool, error) {
 }
 
 // client connects to the daemon chosen by the flags or the config file.
+// When the control socket exists but this user may not open it (the
+// daemon runs as a service under root or SYSTEM), it falls back to the
+// read-only HTTP API.
 func (a *app) client() (*client.Client, error) {
 	if a.url != "" {
 		return client.NewURL(a.url, a.token)
@@ -114,16 +119,37 @@ func (a *app) client() (*client.Client, error) {
 	if a.socket != "" {
 		return client.NewSocket(a.socket), nil
 	}
-	if c, _, err := a.loadConfig(); err == nil && c.Listen.Control != "" {
-		return client.NewSocket(c.Listen.Control), nil
+	cfg, _, err := a.loadConfig()
+	if err != nil {
+		cfg = config.Default()
 	}
-	candidates := config.ControlCandidates()
-	for _, p := range candidates {
-		if _, err := os.Stat(p); err == nil {
-			return client.NewSocket(p), nil
+	sock := cfg.Listen.Control
+	if sock == "" {
+		candidates := config.ControlCandidates()
+		sock = candidates[len(candidates)-1]
+		for _, p := range candidates {
+			if _, err := os.Stat(p); err == nil {
+				sock = p
+				break
+			}
 		}
 	}
-	return client.NewSocket(candidates[len(candidates)-1]), nil
+	if client.SocketDenied(sock) && cfg.Listen.HTTP != "" {
+		c, err := client.NewURL(client.LocalURL(cfg.Listen.HTTP), a.token)
+		if err != nil {
+			return nil, err
+		}
+		c.ReadOnlyBecause = fmt.Sprintf("this user may not use the control socket %s; %s", sock, controlHint())
+		return c, nil
+	}
+	return client.NewSocket(sock), nil
+}
+
+func controlHint() string {
+	if runtime.GOOS == "windows" {
+		return "run nutng from a terminal opened with \"Run as administrator\""
+	}
+	return "run it with sudo, or add yourself to the nutng group"
 }
 
 func (a *app) versionCmd() *cobra.Command {

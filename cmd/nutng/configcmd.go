@@ -35,12 +35,21 @@ func (a *app) configCmd() *cobra.Command {
 				return nil
 			}
 			names := cfg.UPSNames()
-			http := cfg.Listen.HTTP
-			if http == "" {
-				http = "off"
+			orOff := func(s string) string {
+				if s == "" {
+					return "off"
+				}
+				return s
 			}
-			fmt.Fprintf(out, "OK: %s is valid.\n  UPS:      %d (%s)\n  REST API: %s\n",
-				cfg.Path, len(names), strings.Join(names, ", "), http)
+			metrics := cfg.Listen.Metrics
+			switch {
+			case strings.EqualFold(metrics, "off"):
+			case metrics == "" && cfg.Listen.HTTP != "":
+				metrics = cfg.Listen.HTTP + "/metrics"
+			}
+			fmt.Fprintf(out, "OK: %s is valid.\n  UPS:          %d (%s)\n  REST API:     %s\n  NUT protocol: %s (%d users)\n  Metrics:      %s\n",
+				cfg.Path, len(names), strings.Join(names, ", "), orOff(cfg.Listen.HTTP),
+				orOff(cfg.Listen.NUT), len(cfg.Users), orOff(metrics))
 			return nil
 		},
 	})

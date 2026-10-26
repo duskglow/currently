@@ -248,3 +248,39 @@ func TestCoreRetriesAndCommands(t *testing.T) {
 		t.Errorf("SetVar: %v", err)
 	}
 }
+
+func TestForcedShutdownPersists(t *testing.T) {
+	bus := NewBus()
+	s := NewStore(bus)
+	s.Add("rack", "", "fake", 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ch := bus.Subscribe(ctx, 100)
+
+	s.Apply("rack", sdk.Update{Vars: map[string]string{"ups.status": "OB LB"}})
+	if err := s.SetFSD("rack"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetFSD("nope"); !errors.Is(err, sdk.ErrNotFound) {
+		t.Errorf("unknown UPS: %v", err)
+	}
+	u, _ := s.Get("rack")
+	if got := u.Value("ups.status"); got != "OB LB FSD" {
+		t.Errorf("status after FSD = %q", got)
+	}
+	// The driver keeps reporting its own status; FSD must stay.
+	s.Apply("rack", sdk.Update{Vars: map[string]string{"ups.status": "OB LB"}})
+	u, _ = s.Get("rack")
+	if got := u.Value("ups.status"); got != "OB LB FSD" {
+		t.Errorf("status after next update = %q", got)
+	}
+	n := 0
+	for _, e := range drain(ch) {
+		if e.Type == sdk.EventForcedShutdown {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("forced_shutdown events = %d, want 1", n)
+	}
+}

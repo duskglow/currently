@@ -28,6 +28,41 @@ type Client struct {
 	where string // for error messages
 	token string
 	http  *http.Client
+
+	// ReadOnlyBecause, when set, explains why the client fell back to the
+	// read-only HTTP API; it replaces the server's refusal of changes.
+	ReadOnlyBecause string
+}
+
+// SocketDenied reports whether the control socket at path exists but this
+// process may not connect to it.
+func SocketDenied(path string) bool {
+	if _, err := os.Stat(path); err != nil {
+		return false
+	}
+	conn, err := net.DialTimeout("unix", path, time.Second)
+	if err == nil {
+		conn.Close()
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return errors.Is(err, os.ErrPermission) || strings.Contains(msg, "permission denied") || strings.Contains(msg, "access is denied")
+}
+
+// LocalURL turns a listen address into a URL for this machine:
+// ":9300" and "0.0.0.0:9300" become http://127.0.0.1:9300.
+func LocalURL(listen string) string {
+	host, port, err := net.SplitHostPort(listen)
+	if err != nil {
+		return "http://" + listen
+	}
+	switch host {
+	case "", "0.0.0.0":
+		host = "127.0.0.1"
+	case "::":
+		host = "::1"
+	}
+	return "http://" + net.JoinHostPort(host, port)
 }
 
 // NewSocket returns a client for the control socket at path.
@@ -163,6 +198,9 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
+		if resp.StatusCode == http.StatusForbidden && c.ReadOnlyBecause != "" {
+			return fmt.Errorf("cannot make changes: %s", c.ReadOnlyBecause)
+		}
 		return apiError(resp)
 	}
 	if out == nil {

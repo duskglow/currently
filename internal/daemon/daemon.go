@@ -4,13 +4,18 @@ package daemon
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -18,8 +23,9 @@ import (
 	"github.com/nut-ng/nut-ng/internal/config"
 	"github.com/nut-ng/nut-ng/internal/core"
 	"github.com/nut-ng/nut-ng/internal/registry"
+	"github.com/nut-ng/nut-ng/outputs/nutproto"
+	"github.com/nut-ng/nut-ng/outputs/prometheus"
 	"github.com/nut-ng/nut-ng/outputs/rest"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
 )
 
 // Options for Run.
@@ -50,11 +56,46 @@ func Run(ctx context.Context, o Options) error {
 		}
 	}
 
+	// Open every listener before starting anything, so a busy port fails
+	// fast with a clear message.
 	ctl, ctlPath, err := listenControl(cfg.Listen.Control)
 	if err != nil {
 		return err
 	}
 	defer ctl.Close()
+	var httpLn, metricsLn, nutLn net.Listener
+	closeAll := func() {
+		for _, ln := range []net.Listener{httpLn, metricsLn, nutLn} {
+			if ln != nil {
+				ln.Close()
+			}
+		}
+	}
+	defer closeAll()
+	if cfg.Listen.HTTP != "" {
+		if httpLn, err = listenTCP(cfg.Listen.HTTP, "the REST API", "listen.http", "another nutng"); err != nil {
+			return err
+		}
+	}
+	separateMetrics := cfg.Listen.Metrics != "" && !strings.EqualFold(cfg.Listen.Metrics, "off")
+	if separateMetrics {
+		if metricsLn, err = listenTCP(cfg.Listen.Metrics, "Prometheus metrics", "listen.metrics", "another nutng"); err != nil {
+			return err
+		}
+	}
+	var nutTLS *tls.Config
+	if t := cfg.Listen.NUTTLS; t != nil && cfg.Listen.NUT != "" {
+		cert, err := tls.LoadX509KeyPair(t.CertFile, t.KeyFile)
+		if err != nil {
+			return fmt.Errorf("listen.nut_tls: %w", err)
+		}
+		nutTLS = &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
+	}
+	if cfg.Listen.NUT != "" {
+		if nutLn, err = listenTCP(cfg.Listen.NUT, "the NUT protocol", "listen.nut", "NUT's upsd or another nutng"); err != nil {
+			return err
+		}
+	}
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return c.Run(ctx) })
@@ -62,15 +103,31 @@ func Run(ctx context.Context, o Options) error {
 		h := rest.NewHandler(c, rest.Options{Trusted: true, Version: o.Version, Log: log.With("api", "control")})
 		return rest.Serve(ctx, ctl, h)
 	})
-	if cfg.Listen.HTTP != "" {
-		out := &rest.Output{Version: o.Version}
-		ocfg := sdk.Config{"addr": cfg.Listen.HTTP, "token": cfg.Token()}
-		g.Go(func() error {
-			if err := out.Run(ctx, c, ocfg, log.With("output", "rest")); err != nil {
-				return fmt.Errorf("REST API: %w", err)
-			}
-			return nil
-		})
+	if httpLn != nil {
+		api := rest.NewHandler(c, rest.Options{Token: cfg.Token(), Version: o.Version, Log: log.With("api", "http")})
+		mux := http.NewServeMux()
+		mux.Handle("/", api)
+		if cfg.Listen.Metrics == "" {
+			mux.Handle("GET /metrics", prometheus.Handler(c, o.Version))
+		}
+		log.Info("REST API listening", "addr", httpLn.Addr().String(), "metrics", cfg.Listen.Metrics == "",
+			"changes_allowed", cfg.Token() != "")
+		g.Go(func() error { return rest.Serve(ctx, httpLn, mux) })
+	}
+	if metricsLn != nil {
+		mux := http.NewServeMux()
+		mux.Handle("GET /metrics", prometheus.Handler(c, o.Version))
+		log.Info("Prometheus metrics listening", "addr", metricsLn.Addr().String())
+		g.Go(func() error { return rest.Serve(ctx, metricsLn, mux) })
+	}
+	if nutLn != nil {
+		users := map[string]nutproto.User{}
+		for name, u := range cfg.Users {
+			users[name] = nutproto.User{Password: u.Secret(), Role: u.Role}
+		}
+		srv := nutproto.New(c, nutproto.Options{Users: users, TLS: nutTLS, Version: o.Version, Log: log.With("output", "nut")})
+		log.Info("NUT protocol listening", "addr", nutLn.Addr().String(), "users", len(users), "starttls", nutTLS != nil)
+		g.Go(func() error { return srv.Serve(ctx, nutLn) })
 	}
 
 	log.Info("nutng started", "version", o.Version, "config", orNone(cfg.Path),
@@ -130,11 +187,35 @@ func listenUnix(path string) (net.Listener, error) {
 		return nil, err
 	}
 	if runtime.GOOS != "windows" {
-		// Owner and group may use the CLI; on Linux packages add admins to
-		// the nutng group.
+		// Owner and group may use the CLI. When a nutng group exists, its
+		// members can control the daemon without root.
 		_ = os.Chmod(path, 0o660)
+		if g, err := user.LookupGroup("nutng"); err == nil {
+			if gid, err := strconv.Atoi(g.Gid); err == nil {
+				_ = os.Chown(path, -1, gid)
+			}
+		}
 	}
 	return ln, nil
+}
+
+// listenTCP opens a TCP listener, explaining the usual causes of failure.
+func listenTCP(addr, what, key, usual string) (net.Listener, error) {
+	ln, err := net.Listen("tcp", addr)
+	if err == nil {
+		return ln, nil
+	}
+	if isAddrInUse(err) {
+		return nil, fmt.Errorf("cannot serve %s on %s: the port is already in use. Is %s running? "+
+			"Stop it, or set %s in nutng.yaml to another address or \"off\"", what, addr, usual, key)
+	}
+	return nil, fmt.Errorf("cannot serve %s on %s (%s): %w", what, addr, key, err)
+}
+
+func isAddrInUse(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "address already in use") || // Unix
+		strings.Contains(msg, "only one usage of each socket address") // Windows
 }
 
 func orNone(s string) string {
