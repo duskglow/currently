@@ -12,6 +12,8 @@ currently config validate --config currently.yaml
 | NUT | Currently |
 |---|---|
 | `ups.conf` sections with `usbhid-ups` | `ups:` entries with the `usbhid` driver (the default) |
+| `snmp-ups` | the [`snmp` driver](drivers.md#snmp-plugin) (UPS-MIB and APC) |
+| `apcsmart`, `blazer_ser`, `nutdrv_qx` on a serial port | the [`serial` driver](drivers.md#serial-plugin) |
 | other drivers | the [`nut` or `exec` driver](drivers.md), or a plugin |
 | `upsd.conf` `LISTEN` | `listen.nut` |
 | `upsd.users` | `users:` (roles `secondary`, `primary`, `admin`; `slave`/`master` are accepted) |

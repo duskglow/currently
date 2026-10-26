@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/duskglow/currently/internal/config"
-	"github.com/duskglow/currently/internal/registry"
 )
 
 func convert(t *testing.T, dir string) (*Result, *config.Config) {
@@ -19,7 +18,7 @@ func convert(t *testing.T, dir string) (*Result, *config.Config) {
 	if err != nil {
 		t.Fatalf("%v\n%s", err, res.YAML)
 	}
-	if err := c.Validate(registry.Builtin()); err != nil {
+	if err := c.Validate(Registry()); err != nil {
 		t.Fatalf("%v\n%s", err, res.YAML)
 	}
 	return res, c
@@ -29,12 +28,32 @@ func TestPrimary(t *testing.T) {
 	res, c := convert(t, "testdata/primary")
 
 	rack, ok := c.UPS["rack"]
-	if !ok || len(c.UPS) != 1 {
+	if !ok || len(c.UPS) != 4 {
 		t.Fatalf("UPSes = %v\n%s", c.UPSNames(), res.YAML)
 	}
 	if rack.Driver != "usbhid" || rack.Description != "Rack UPS (APC)" || rack.Options["id"] != "051d:0002" ||
 		rack.Options["serial"] != "3B1234X56789" || rack.Options["interval"] != "5s" {
 		t.Errorf("rack = %+v", rack)
+	}
+	for name, want := range map[string]map[string]any{
+		"closet": {"driver": "snmp", "host": "192.168.1.20", "community": "public", "mib": "apc", "interval": "15s"},
+		"serial": {"driver": "serial", "port": "/dev/ttyS0", "protocol": "megatec", "battery_voltage_low": 21.0,
+			"battery_voltage_high": 26.0, "description": "Basement UPS"},
+		"apc": {"driver": "serial", "port": "/dev/ttyS1", "protocol": "apcsmart"},
+	} {
+		u := c.UPS[name]
+		for k, v := range want {
+			got := u.Options[k]
+			switch k {
+			case "driver":
+				got = u.Driver
+			case "description":
+				got = u.Description
+			}
+			if got != v {
+				t.Errorf("%s.%s = %v (%T), want %v\n%s", name, k, got, got, v, res.YAML)
+			}
+		}
 	}
 	if c.Listen.NUT != "127.0.0.1:3493" {
 		t.Errorf("listen.nut = %q", c.Listen.NUT)
@@ -67,7 +86,7 @@ func TestPrimary(t *testing.T) {
 	}
 
 	notes := strings.Join(res.Notes, "\n")
-	for _, want := range []string{"[closet]: skipped: driver snmp-ups", "[test]: skipped: dummy-ups", "[reader]: skipped",
+	for _, want := range []string{"[usbq]: skipped: driver nutdrv_qx on USB", "[old]: skipped: driver bcmxcp", "[test]: skipped: dummy-ups", "[reader]: skipped",
 		"POWERDOWNFLAG", "NOTIFYCMD", "listened on 127.0.0.1:3493, 192.168.1.10:3493"} {
 		if !strings.Contains(notes, want) {
 			t.Errorf("notes lack %q:\n%s", want, notes)

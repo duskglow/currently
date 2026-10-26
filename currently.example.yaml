@@ -18,6 +18,13 @@ ups:
   #   ups: ups
   #   username: mon
   #   password_env: CURRENTLY_MON_PASSWORD
+  # card:
+  #   driver: snmp             # a UPS network card (plugin)
+  #   host: 192.168.1.20
+  #   community: public
+  # closet:
+  #   driver: serial           # Megatec/Q1 or APC Smart on a serial port (plugin)
+  #   port: /dev/ttyUSB0
   # other:
   #   driver: exec             # any program that prints UPS variables
   #   command: upsc ups@nas.local

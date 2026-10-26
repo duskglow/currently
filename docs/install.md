@@ -2,7 +2,8 @@
 
 Every release has packages for each platform on the
 [releases page](https://github.com/duskglow/currently/releases). They install
-the `currently` binary, the MQTT plugin and a system service, and leave the
+the `currently` binary, the bundled plugins (the SNMP and serial drivers,
+and the MQTT output) and a system service, and leave the
 service stopped until there is a config file (except on Windows, where it
 starts at once and finds USB UPSes by itself).
 
@@ -75,7 +76,7 @@ anywhere: unpack them and run `currently`.
 | Path | What |
 |---|---|
 | `/usr/bin/currently` | The CLI and daemon (a link to `/usr/lib/currently/currently`) |
-| `/usr/lib/currently/plugins/` | Bundled plugins (MQTT) |
+| `/usr/lib/currently/plugins/` | Bundled plugins (SNMP and serial drivers, MQTT output) |
 | `/usr/lib/systemd/system/currently.service` | The service (`/etc/init.d/currently` on Alpine) |
 | `/usr/lib/udev/rules.d/90-currently-ups.rules` | Lets the `currently` group open USB UPSes |
 | `/etc/currently/` | Your `currently.yaml`, and `plugins.d/` for more plugins |
@@ -103,7 +104,10 @@ With Go 1.26 or newer:
 ```sh
 git clone https://github.com/duskglow/currently && cd Currently
 go build -o currently ./cmd/currently
-go build -o plugins/currently-output-mqtt ./plugins/mqtt   # optional; plugins/ next to currently
+# optional plugins, in plugins/ next to currently:
+go build -o plugins/currently-output-mqtt ./plugins/mqtt
+go build -o plugins/currently-driver-snmp ./plugins/snmp
+go build -o plugins/currently-driver-serial ./plugins/serial
 ```
 
 No C compiler is needed on any platform (`CGO_ENABLED=0`).

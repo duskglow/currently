@@ -2,7 +2,7 @@
 #
 #   packaging\windows\build-msi.ps1 -Version 1.2.3 -BinDir dist\currently_windows_amd64_v1 -Out dist\currently_1.2.3_windows_amd64.msi
 #
-# BinDir holds currently.exe and plugins\currently-output-mqtt.exe. Needs the .NET
+# BinDir holds currently.exe and the plugins\ folder. Needs the .NET
 # SDK; the WiX tool is installed into a local folder if it is missing.
 param(
     [Parameter(Mandatory)] [string] $Version,

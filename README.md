@@ -7,8 +7,9 @@ config file, clear error messages, and an API that monitoring tools can
 query. It speaks NUT's protocol, so NUT clients work with it unchanged.
 (The project was called nut-ng until October 2026.)
 
-> **Status:** early development (milestone 6 of 7). USB UPSes work on
-> Linux, Windows, macOS and FreeBSD. Currently shuts computers down safely (as
+> **Status:** early development (all 7 planned milestones built). USB
+> UPSes work on Linux, Windows, macOS and FreeBSD, and network-card and
+> serial UPSes (Megatec/Q1, APC Smart) through bundled driver plugins. Currently shuts computers down safely (as
 > primary or secondary, and alongside NUT's upsmon and upsd), serves the
 > NUT protocol, SNMP (UPS-MIB), Prometheus metrics, MQTT and a REST API,
 > installs itself as a service, and takes driver and output plugins. See
@@ -107,6 +108,31 @@ ups:
     command: upsc ups@nas.local
     interval: 10s
 ```
+
+**The SNMP driver** (`plugins/snmp`, `currently-driver-snmp`) reads UPS
+network cards with the UPS-MIB or APC's PowerNet-MIB, over v1, v2c or v3:
+
+```yaml
+ups:
+  rack:
+    driver: snmp
+    host: 192.168.1.20
+    community: public
+```
+
+**The serial driver** (`plugins/serial`, `currently-driver-serial`) reads
+serial UPSes with the Megatec/Q1 or APC Smart protocol:
+
+```yaml
+ups:
+  closet:
+    driver: serial
+    port: /dev/ttyUSB0       # COM3 on Windows
+```
+
+`currently import-nut` converts NUT's `snmp-ups`, `apcsmart` and
+`blazer_ser`/`nutdrv_qx` sections to these. See
+[UPS drivers](docs/drivers.md).
 
 **Writing a plugin.** `currently plugin new driver|output <name>` creates a Go
 or Python (`--lang python`) project to start from. Go plugins implement the
@@ -309,6 +335,8 @@ currently.yaml:4: UPS rack (usbhid driver): unknown option "serail" (did you mea
 | `internal/scaffold` | `currently plugin new` templates and the Python SDK |
 | `pkg/plugin` | Go SDK for plugins |
 | `plugins/mqtt` | MQTT output plugin |
+| `plugins/snmp` | SNMP driver plugin (UPS-MIB, APC PowerNet-MIB) |
+| `plugins/serial` | Serial driver plugin (Megatec/Q1, APC Smart) |
 | `drivers/execdriver` | `exec` driver: any program that prints UPS variables |
 | `internal/nutimport` | `currently import-nut` |
 | `drivers/nutclient` | `nut` driver: a UPS on another Currently or NUT upsd |

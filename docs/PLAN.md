@@ -167,7 +167,7 @@ packaging/                 systemd unit, udev rules, rc.d, launchd plist, MSI (W
 4. **Shutdown:** policy engine, primary/secondary roles and FSD, client mode, dry-run test, `import-nut`.
 5. **External plugins:** go-plugin loader and supervisor, exec driver, `plugin new` scaffold, Python example, MQTT output plugin.
 6. **Breadth:** SNMP agent output, macOS and FreeBSD HID transports, full packaging matrix, docs site.
-7. **More inputs as plugins (this also tests the plugin architecture):**
+7. **More inputs as plugins (this also tests the plugin architecture):** (the upstream NUT driver became the built-in `nut` driver in milestone 4, since secondaries rely on it)
    - SNMP-card driver (UPS-MIB, APC PowerNet MIB)
    - serial drivers (APC smart, Megatec/Q1)
    - an "upstream NUT" driver for gradual migration

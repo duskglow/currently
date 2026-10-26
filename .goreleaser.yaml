@@ -35,10 +35,22 @@ builds:
     binary: plugins/currently-output-mqtt
     ldflags:
       - -s -w
+  - <<: *build
+    id: snmp
+    main: ./plugins/snmp
+    binary: plugins/currently-driver-snmp
+    ldflags:
+      - -s -w
+  - <<: *build
+    id: serial
+    main: ./plugins/serial
+    binary: plugins/currently-driver-serial
+    ldflags:
+      - -s -w
 
 archives:
   - id: default
-    ids: [currently, mqtt]
+    ids: [currently, mqtt, snmp, serial]
     formats: [tar.gz]
     format_overrides:
       - { goos: windows, formats: [zip] }
@@ -56,7 +68,7 @@ archives:
 
 nfpms:
   - id: packages
-    ids: [currently, mqtt]
+    ids: [currently, mqtt, snmp, serial]
     package_name: currently
     vendor: Currently
     homepage: https://github.com/duskglow/currently
@@ -136,7 +148,7 @@ signs:
 
 dockers_v2:
   - id: image
-    ids: [currently, mqtt]
+    ids: [currently, mqtt, snmp, serial]
     dockerfile: packaging/docker/Dockerfile
     images: [ghcr.io/duskglow/currently]
     tags:

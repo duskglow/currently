@@ -324,12 +324,97 @@ func convertUPS(s *section) (*upsBlock, string) {
 			b.keys = append(b.keys, [2]string{"interval", seconds(v)})
 		}
 		return b, ""
+	case "snmp-ups":
+		return convertSNMP(b, k)
+	case "apcsmart":
+		return convertSerial(b, k, "apcsmart")
+	case "blazer_ser", "nutdrv_qx":
+		if p := strings.ToLower(k["protocol"]); p != "" && p != "megatec" && p != "q1" {
+			return nil, fmt.Sprintf("driver %s with protocol %s (Currently's serial driver speaks megatec and apcsmart)", k["driver"], p)
+		}
+		if k["port"] == "" || k["port"] == "auto" {
+			return nil, fmt.Sprintf("driver %s on USB (USB Megatec UPSes are not supported yet; serial ports are)", k["driver"])
+		}
+		return convertSerial(b, k, "megatec")
 	case "dummy-ups":
 		return nil, "dummy-ups (use the simulator or replay driver instead)"
 	case "":
 		return nil, "no driver set"
 	}
-	return nil, fmt.Sprintf("driver %s is not supported by Currently yet (USB HID UPSes are; serial and SNMP drivers come later)", k["driver"])
+	return nil, fmt.Sprintf("driver %s is not supported by Currently yet (USB HID, SNMP, APC Smart and Megatec serial UPSes are)", k["driver"])
+}
+
+// convertSNMP maps snmp-ups options to the snmp driver plugin.
+func convertSNMP(b *upsBlock, k map[string]string) (*upsBlock, string) {
+	if k["port"] == "" {
+		return nil, "snmp-ups without port (the card's address)"
+	}
+	b.comment = "snmp-ups: uses the snmp driver plugin (currently-driver-snmp)"
+	add := func(key, v string) { b.keys = append(b.keys, [2]string{key, strconv.Quote(v)}) }
+	b.keys = append(b.keys, [2]string{"driver", "snmp"})
+	if d := k["desc"]; d != "" {
+		add("description", d)
+	}
+	add("host", k["port"])
+	switch v := strings.ToLower(k["snmp_version"]); v {
+	case "v1":
+		add("version", "1")
+	case "v3":
+		add("version", "3")
+	}
+	if v := k["community"]; v != "" {
+		add("community", v)
+	}
+	switch m := strings.ToLower(k["mibs"]); m {
+	case "apcc":
+		add("mib", "apc")
+	case "ietf":
+		add("mib", "ietf")
+	}
+	if v := k["secname"]; v != "" {
+		add("username", v)
+	}
+	level := strings.ToLower(k["seclevel"])
+	if level == "authnopriv" || level == "authpriv" {
+		add("auth", strings.ToLower(cmpOr(k["authprotocol"], "md5")))
+		add("auth_password", k["authpassword"])
+	}
+	if level == "authpriv" {
+		add("privacy", strings.ToLower(cmpOr(k["privprotocol"], "des")))
+		add("privacy_password", k["privpassword"])
+	}
+	if v := k["pollfreq"]; v != "" {
+		b.keys = append(b.keys, [2]string{"interval", seconds(v)})
+	}
+	return b, ""
+}
+
+// convertSerial maps apcsmart, blazer_ser and nutdrv_qx options to the
+// serial driver plugin.
+func convertSerial(b *upsBlock, k map[string]string, protocol string) (*upsBlock, string) {
+	if k["port"] == "" {
+		return nil, k["driver"] + " without port"
+	}
+	b.comment = k["driver"] + ": uses the serial driver plugin (currently-driver-serial)"
+	b.keys = append(b.keys, [2]string{"driver", "serial"})
+	if d := k["desc"]; d != "" {
+		b.keys = append(b.keys, [2]string{"description", strconv.Quote(d)})
+	}
+	b.keys = append(b.keys, [2]string{"port", strconv.Quote(k["port"])}, [2]string{"protocol", protocol})
+	if lo, hi := k["default.battery.voltage.low"], k["default.battery.voltage.high"]; lo != "" && hi != "" {
+		b.keys = append(b.keys, [2]string{"battery_voltage_low", lo}, [2]string{"battery_voltage_high", hi})
+	}
+	if v := k["pollinterval"]; v != "" {
+		b.keys = append(b.keys, [2]string{"interval", seconds(v)})
+	}
+	return b, ""
+}
+
+func cmpOr(s, def string) string {
+	if s == "" {
+		return def
+	}
+	return s
 }
 
 func userRole(k map[string]string) string {

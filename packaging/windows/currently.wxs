@@ -47,6 +47,12 @@
       <Component Directory="PLUGINSFOLDER">
         <File Id="MqttPlugin" Source="$(BinDir)\plugins\currently-output-mqtt.exe" KeyPath="yes" />
       </Component>
+      <Component Directory="PLUGINSFOLDER">
+        <File Id="SnmpPlugin" Source="$(BinDir)\plugins\currently-driver-snmp.exe" KeyPath="yes" />
+      </Component>
+      <Component Directory="PLUGINSFOLDER">
+        <File Id="SerialPlugin" Source="$(BinDir)\plugins\currently-driver-serial.exe" KeyPath="yes" />
+      </Component>
     </Feature>
   </Package>
 </Wix>

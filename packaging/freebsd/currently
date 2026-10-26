@@ -1,14 +1,14 @@
 #!/bin/sh
 #
-# PROVIDE: Currently
+# PROVIDE: currently
 # REQUIRE: NETWORKING devfs
 # BEFORE: LOGIN
 # KEYWORD: shutdown
 #
-# rc.d script for Currently, the Currently UPS monitor. Enable it with
+# rc.d script for Currently, the UPS monitor. Enable it with
 #
 #   sysrc currently_enable=YES
-#   service Currently start
+#   service currently start
 #
 # currently_config: config file (default /usr/local/etc/currently/currently.yaml)
 # currently_env_file: NAME=value secrets for *_env settings

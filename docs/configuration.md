@@ -30,7 +30,7 @@ the NUT protocol (`upsc rack@host`) and the API.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `driver` | `usbhid` | `usbhid`, `nut`, `exec`, `simulator`, `replay`, or a driver plugin |
+| `driver` | `usbhid` | `usbhid`, `nut`, `exec`, `simulator`, `replay`, or a driver plugin such as `snmp` or `serial` |
 | `description` | | Shown by `currently status` and `upsc -L` |
 | `stale_after` | `30s` | Mark the UPS stale when it stays silent this long |
 | *anything else* | | Passed to the driver; see [UPS drivers](drivers.md) |

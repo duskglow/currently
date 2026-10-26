@@ -10,7 +10,6 @@ import (
 
 	"github.com/duskglow/currently/internal/config"
 	"github.com/duskglow/currently/internal/nutimport"
-	"github.com/duskglow/currently/internal/registry"
 )
 
 func (a *app) importNUTCmd() *cobra.Command {
@@ -45,7 +44,7 @@ Without --output, the result is printed.`,
 			}
 			c, err := config.Parse("converted", []byte(res.YAML))
 			if err == nil {
-				err = c.Validate(registry.Builtin())
+				err = c.Validate(nutimport.Registry())
 			}
 			if err != nil {
 				return fmt.Errorf("the converted config has problems, please report this: %w\n%s", err, res.YAML)
