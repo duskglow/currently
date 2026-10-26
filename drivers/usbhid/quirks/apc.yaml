@@ -1,0 +1,25 @@
+name: apc
+description: American Power Conversion (APC by Schneider Electric)
+# Not yet verified on hardware. APC Back-UPS and Smart-UPS models use the
+# standard layout for the values below; APC's vendor page (0xFF86) is not
+# mapped yet. Captures from APC units are welcome.
+match:
+  vendor_ids: ["051d"]
+
+vars:
+  battery.runtime.low:
+    paths:
+      - UPS.Battery.RemainingTimeLimit
+      - UPS.PowerSummary.RemainingTimeLimit
+    decimals: 0
+    writable: true
+  battery.voltage:
+    paths:
+      - UPS.Battery.Voltage
+      - UPS.PowerSummary.Voltage
+    decimals: 1
+  battery.voltage.nominal:
+    paths:
+      - UPS.Battery.ConfigVoltage
+      - UPS.PowerSummary.ConfigVoltage
+    decimals: 1

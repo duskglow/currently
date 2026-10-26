@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/nut-ng/nut-ng/drivers/usbhid"
 	"github.com/nut-ng/nut-ng/internal/config"
 	"github.com/nut-ng/nut-ng/internal/daemon"
 	"github.com/nut-ng/nut-ng/internal/registry"
@@ -26,9 +27,9 @@ func (a *app) serveCmd() *cobra.Command {
 		Long: `Run the nutng daemon in the foreground. Service managers (systemd, the
 Windows service manager, launchd) run this command.
 
-Without a config file, nutng starts with defaults: the REST API on
-127.0.0.1:9300 and no UPS. Use --demo to add a simulated UPS whose mains
-power fails for one minute every three minutes.`,
+Without a config file, nutng monitors every USB UPS it finds and serves
+the REST API on 127.0.0.1:9300. Use --demo to add a simulated UPS whose
+mains power fails for one minute every three minutes.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, found, err := a.loadConfig()
@@ -37,6 +38,17 @@ power fails for one minute every three minutes.`,
 			}
 			if demo {
 				cfg.AddDemo()
+			}
+			autodetected := 0
+			if !found && len(cfg.UPS) == 0 && !demo {
+				// Zero-config: monitor every USB UPS attached.
+				list, _ := discover(cmd.Context(), registry.Builtin(), map[string]bool{})
+				for _, f := range list {
+					if f.Driver == usbhid.DriverName {
+						cfg.AddUPS(f.UPS, config.UPS{Driver: f.Driver, Description: f.Name, Options: f.Config})
+						autodetected++
+					}
+				}
 			}
 			if logLevel != "" {
 				cfg.Log.Level = logLevel
@@ -51,6 +63,9 @@ power fails for one minute every three minutes.`,
 			log := newLogger(cfg.Log)
 			if !found {
 				log.Info("no config file found; using defaults", "looked_for", config.DefaultPath())
+			}
+			if autodetected > 0 {
+				log.Info("monitoring the USB UPSes found; run `nutng init` to save this as a config file", "ups", autodetected)
 			}
 
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

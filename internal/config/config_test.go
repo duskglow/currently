@@ -93,7 +93,7 @@ func TestValidateErrors(t *testing.T) {
 		want      []string
 	}{
 		{"unknown driver", "ups:\n  rack:\n    driver: simulater\n", []string{"nutng.yaml:3:", `did you mean "simulator"`}},
-		{"missing driver", "ups:\n  rack:\n    description: x\n", []string{"nutng.yaml:2:", "no driver set"}},
+		{"usbhid option typo", "ups:\n  rack:\n    serail: X1\n", []string{"nutng.yaml:3:", "usbhid driver", `did you mean "serial"`}},
 		{"driver option typo", "ups:\n  rack:\n    driver: simulator\n    scenaro: cycle\n", []string{"nutng.yaml:4:", `did you mean "scenario"`}},
 		{"driver option value", "ups:\n  rack:\n    driver: simulator\n    load: 150\n", []string{"nutng.yaml:4:", "load must be between 0 and 100"}},
 		{"bad name", "ups:\n  my ups:\n    driver: simulator\n", []string{"may only contain"}},
@@ -117,6 +117,19 @@ func TestValidateErrors(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestDefaultDriver(t *testing.T) {
+	c, err := Parse("nutng.yaml", []byte("ups:\n  rack:\n    serial: X1\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Validate(registry.Builtin()); err != nil {
+		t.Fatal(err)
+	}
+	if c.UPS["rack"].Driver != "usbhid" || c.UPS["rack"].Options["serial"] != "X1" {
+		t.Errorf("rack = %+v", c.UPS["rack"])
 	}
 }
 

@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -22,13 +23,14 @@ type app struct {
 	url        string
 	token      string
 
+	stdin          io.Reader
 	stdout, stderr io.Writer
 }
 
 func main() {
-	a := &app{stdout: os.Stdout, stderr: os.Stderr}
+	a := &app{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr}
 	root := a.rootCmd()
-	if err := root.Execute(); err != nil {
+	if err := root.ExecuteContext(context.Background()); err != nil {
 		var exit exitError
 		if errors.As(err, &exit) {
 			os.Exit(int(exit))
@@ -51,10 +53,13 @@ func (a *app) rootCmd() *cobra.Command {
 		Long: `nutng monitors UPSes (uninterruptible power supplies) and serves their
 state over a REST API, so monitoring tools can query it.
 
-Try it without hardware:
-  nutng serve --demo        # run the daemon with a simulated UPS
+Get started with a USB UPS:
+  nutng init                # find the UPS and write a config file
+  nutng serve               # run the daemon
   nutng status              # in another terminal
-  nutng watch`,
+
+Try it without hardware:
+  nutng serve --demo        # a simulated UPS`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -69,12 +74,15 @@ Try it without hardware:
 
 	root.AddCommand(
 		a.serveCmd(),
+		a.initCmd(),
+		a.detectCmd(),
 		a.statusCmd(),
 		a.watchCmd(),
 		a.varsCmd(),
 		a.cmdCmd(),
 		a.setCmd(),
 		a.configCmd(),
+		a.debugCmd(),
 		a.versionCmd(),
 	)
 	return root

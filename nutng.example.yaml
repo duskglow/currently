@@ -2,11 +2,20 @@
 
 ups:
   # Each key is a UPS name, used in the CLI and the API.
-  lab:
-    driver: simulator          # the only driver so far; usbhid is next
-    description: Simulated UPS for testing
+  rack:
+    # driver: usbhid           # the default: a USB UPS
+    description: Rack UPS
     stale_after: 30s           # mark the UPS stale if it stays silent this long
-    # Everything else is passed to the driver. Simulator options:
+    # Everything else is passed to the driver. usbhid options (all
+    # optional; `nutng detect` prints the right ones):
+    # serial: "CXXKZ0000000"   # choose by USB serial number
+    # id: "0764:0601"          # or by vendor:product ID
+    # interval: 2s             # how often to read the UPS
+
+  lab:
+    driver: simulator          # a simulated UPS, for trying things out
+    description: Simulated UPS for testing
+    # Simulator options:
     scenario: cycle            # online, onbattery or cycle
     online_for: 2m             # cycle: time on mains power
     outage_for: 1m             # cycle: length of each outage

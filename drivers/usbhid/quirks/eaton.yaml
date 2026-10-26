@@ -1,0 +1,22 @@
+name: eaton
+description: Eaton and MGE Office Protection Systems
+# Not yet verified on hardware. Eaton/MGE units put measurements under
+# UPS.PowerConverter, with the main input as Input[1] and the bypass input
+# as Input[2]. Captures from Eaton units are welcome.
+match:
+  vendor_ids: ["0463"]
+
+vars:
+  ups.load:
+    paths:
+      - UPS.PowerSummary.PercentLoad
+      - UPS.PowerConverter.Output.PercentLoad
+    decimals: 0
+  input.bypass.voltage:
+    paths:
+      - UPS.PowerConverter.Input[2].Voltage
+    decimals: 1
+  input.bypass.frequency:
+    paths:
+      - UPS.PowerConverter.Input[2].Frequency
+    decimals: 1

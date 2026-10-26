@@ -144,7 +144,7 @@ func writeDetail(w io.Writer, p painter, u sdk.UPS, now time.Time) {
 	}
 	title += "  " + p.paint(term.Dim, "("+u.Driver+" driver)")
 	fmt.Fprintln(w, title)
-	if u.Description != "" {
+	if u.Description != "" && u.Description != u.Model() {
 		fmt.Fprintln(w, "  "+u.Description)
 	}
 

@@ -1,0 +1,10 @@
+name: cyberpower
+description: CyberPower Systems (CPS)
+verified:
+  - CP1500PFCLCD (0764:0601), Windows
+match:
+  vendor_ids: ["0764", "0501"]
+
+# Some CyberPower models report battery voltage scaled by 3/2 (for example
+# 40 V on a 24 V battery); the fixup corrects readings far above nominal.
+fixups: [cps_battery_voltage]

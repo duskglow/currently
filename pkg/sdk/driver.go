@@ -27,8 +27,11 @@ type Driver interface {
 
 // Discovered is a device found by Driver.Discover.
 type Discovered struct {
-	Driver      string `json:"driver"`
-	ID          string `json:"id"`
+	Driver string `json:"driver"`
+	ID     string `json:"id"`
+	// Name is a short name such as "CPS CP1500PFCLCDa"; Description adds
+	// identifying details such as the USB ID and serial number.
+	Name        string `json:"name"`
 	Description string `json:"description"`
 	Config      Config `json:"config,omitempty"`
 }

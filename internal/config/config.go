@@ -38,6 +38,7 @@ type Config struct {
 // UPS is one entry under `ups:`. Keys other than the ones below are passed
 // to the driver as its options.
 type UPS struct {
+	// Driver defaults to usbhid.
 	Driver      string        `yaml:"driver"`
 	Description string        `yaml:"description,omitempty"`
 	StaleAfter  time.Duration `yaml:"stale_after,omitempty"`
@@ -71,6 +72,7 @@ type Log struct {
 // Defaults.
 const (
 	DefaultHTTP       = "127.0.0.1:9300"
+	DefaultDriver     = "usbhid"
 	DefaultStaleAfter = 30 * time.Second
 )
 
@@ -83,6 +85,9 @@ var knownKeys = map[string][]string{
 }
 
 var upsNameRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]*$`)
+
+// ValidUPSName reports whether name can be used as a UPS name.
+func ValidUPSName(name string) bool { return upsNameRE.MatchString(name) }
 
 // Default returns the configuration used when there is no config file.
 func Default() *Config {
@@ -139,10 +144,13 @@ func Parse(path string, data []byte) (*Config, error) {
 		c.Listen.HTTP = ""
 	}
 	for name, u := range c.UPS {
+		if u.Driver == "" {
+			u.Driver = DefaultDriver
+		}
 		if u.StaleAfter == 0 {
 			u.StaleAfter = DefaultStaleAfter
-			c.UPS[name] = u
 		}
+		c.UPS[name] = u
 	}
 	return c, nil
 }
@@ -205,10 +213,6 @@ func (c *Config) Validate(reg *registry.Registry) error {
 		key := "ups." + name
 		if !upsNameRE.MatchString(name) {
 			add(key, "UPS name %q may only contain letters, digits, '.', '_' and '-', and must start with a letter or digit", name)
-		}
-		if u.Driver == "" {
-			add(key, "UPS %s: no driver set; add `driver: <name>` (available: %s)", name, strings.Join(drivers, ", "))
-			continue
 		}
 		d, ok := reg.Driver(u.Driver)
 		if !ok {
@@ -280,19 +284,29 @@ func (c *Config) UPSNames() []string {
 	return names
 }
 
+// AddUPS adds a UPS defined in code (not in the file), filling in defaults.
+func (c *Config) AddUPS(name string, u UPS) {
+	if _, ok := c.UPS[name]; ok {
+		return
+	}
+	if u.Driver == "" {
+		u.Driver = DefaultDriver
+	}
+	if u.StaleAfter == 0 {
+		u.StaleAfter = DefaultStaleAfter
+	}
+	c.UPS[name] = u
+	c.Order = append(c.Order, name)
+}
+
 // AddDemo adds a simulated UPS named "demo" whose mains power fails for a
 // minute every three minutes.
 func (c *Config) AddDemo() {
-	if _, ok := c.UPS["demo"]; ok {
-		return
-	}
-	c.UPS["demo"] = UPS{
+	c.AddUPS("demo", UPS{
 		Driver:      "simulator",
 		Description: "Simulated UPS (--demo)",
-		StaleAfter:  DefaultStaleAfter,
 		Options:     sdk.Config{"scenario": "cycle", "online_for": "2m", "outage_for": "1m"},
-	}
-	c.Order = append(c.Order, "demo")
+	})
 }
 
 // YAML renders the effective config, with secrets hidden.

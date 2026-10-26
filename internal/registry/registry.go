@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/nut-ng/nut-ng/drivers/simulator"
+	"github.com/nut-ng/nut-ng/drivers/usbhid"
 	"github.com/nut-ng/nut-ng/pkg/sdk"
 )
 
@@ -25,6 +26,8 @@ func New() *Registry {
 // nutng.
 func Builtin() *Registry {
 	r := New()
+	r.AddDriver(usbhid.New())
+	r.AddDriver(usbhid.NewReplay())
 	r.AddDriver(simulator.New())
 	return r
 }
@@ -42,6 +45,15 @@ func (r *Registry) AddDriver(d sdk.Driver) {
 func (r *Registry) Driver(name string) (sdk.Driver, bool) {
 	d, ok := r.drivers[name]
 	return d, ok
+}
+
+// Drivers returns the registered drivers, sorted by name.
+func (r *Registry) Drivers() []sdk.Driver {
+	var out []sdk.Driver
+	for _, name := range r.DriverNames() {
+		out = append(out, r.drivers[name])
+	}
+	return out
 }
 
 // DriverNames returns the registered driver names, sorted.

@@ -1,0 +1,248 @@
+# Mapping from HID Power Device fields to NUT variable names, for any UPS.
+#
+# Each variable lists candidate field paths; the first path the device has
+# is used. Vendor files (matched by USB vendor ID) are applied after this
+# one and replace variables or commands of the same name. Files in
+# <config dir>/quirks.d/*.yaml are applied last, so a new model can often be
+# supported without rebuilding nutng. Run `nutng debug capture` to see the
+# paths a device reports.
+name: generic
+description: Standard HID Power Device and Battery System layouts
+
+vars:
+  battery.charge:
+    paths:
+      - UPS.PowerSummary.RemainingCapacity
+      - UPS.BatterySystem.Battery.RemainingCapacity
+      - UPS.Battery.RemainingCapacity
+    decimals: 0
+  battery.charge.low:
+    paths:
+      - UPS.PowerSummary.RemainingCapacityLimit
+      - UPS.Battery.RemainingCapacityLimit
+    decimals: 0
+    writable: true
+  battery.charge.warning:
+    paths:
+      - UPS.PowerSummary.WarningCapacityLimit
+      - UPS.Battery.WarningCapacityLimit
+    decimals: 0
+  battery.runtime:
+    paths:
+      - UPS.PowerSummary.RunTimeToEmpty
+      - UPS.Battery.RunTimeToEmpty
+      - UPS.BatterySystem.Battery.RunTimeToEmpty
+    decimals: 0
+  battery.runtime.low:
+    paths:
+      - UPS.PowerSummary.RemainingTimeLimit
+      - UPS.Battery.RemainingTimeLimit
+    decimals: 0
+    writable: true
+  battery.voltage:
+    paths:
+      - UPS.PowerSummary.Voltage
+      - UPS.Battery.Voltage
+      - UPS.BatterySystem.Battery.Voltage
+    decimals: 1
+  battery.voltage.nominal:
+    paths:
+      - UPS.PowerSummary.ConfigVoltage
+      - UPS.Battery.ConfigVoltage
+      - UPS.BatterySystem.Battery.ConfigVoltage
+    decimals: 1
+  battery.temperature:
+    paths:
+      - UPS.Battery.Temperature
+      - UPS.BatterySystem.Battery.Temperature
+    convert: celsius
+  battery.type:
+    paths:
+      - UPS.PowerSummary.iDeviceChemistry
+      - UPS.Battery.iDeviceChemistry
+    string: true
+  battery.mfr.date:
+    paths:
+      - UPS.PowerSummary.ManufacturerDate
+      - UPS.Battery.ManufacturerDate
+    convert: hid_date
+
+  ups.load:
+    paths:
+      - UPS.Output.PercentLoad
+      - UPS.PowerConverter.Output.PercentLoad
+      - UPS.PowerConverter.PercentLoad
+      - UPS.PowerSummary.PercentLoad
+    decimals: 0
+  ups.realpower:
+    paths:
+      - UPS.Output.ActivePower
+      - UPS.PowerConverter.Output.ActivePower
+      - UPS.PowerSummary.ActivePower
+    decimals: 0
+  ups.realpower.nominal:
+    paths:
+      - UPS.Output.ConfigActivePower
+      - UPS.PowerConverter.Output.ConfigActivePower
+      - UPS.Flow.ConfigActivePower
+      - UPS.PowerSummary.ConfigActivePower
+    decimals: 0
+  ups.power:
+    paths:
+      - UPS.Output.ApparentPower
+      - UPS.PowerConverter.Output.ApparentPower
+      - UPS.PowerSummary.ApparentPower
+    decimals: 0
+  ups.power.nominal:
+    paths:
+      - UPS.Output.ConfigApparentPower
+      - UPS.PowerConverter.Output.ConfigApparentPower
+      - UPS.Flow.ConfigApparentPower
+      - UPS.PowerSummary.ConfigApparentPower
+    decimals: 0
+  ups.temperature:
+    paths:
+      - UPS.PowerSummary.Temperature
+      - UPS.PowerConverter.Temperature
+    convert: celsius
+  ups.beeper.status:
+    paths:
+      - UPS.PowerSummary.AudibleAlarmControl
+    enum: {1: disabled, 2: enabled, 3: muted}
+  ups.test.result:
+    paths:
+      - UPS.BatterySystem.Test
+      - UPS.Battery.Test
+      - UPS.Output.Test
+      - UPS.PowerSummary.Test
+    enum:
+      1: Done and passed
+      2: Done and warning
+      3: Done and error
+      4: Aborted
+      5: In progress
+      6: No test initiated
+  # Countdowns: -1 when no shutdown or restart is pending.
+  ups.timer.shutdown:
+    paths:
+      - UPS.PowerSummary.DelayBeforeShutdown
+      - UPS.Output.DelayBeforeShutdown
+      - UPS.OutletSystem.Outlet.DelayBeforeShutdown
+    decimals: 0
+    negative_is_none: true
+  ups.timer.start:
+    paths:
+      - UPS.PowerSummary.DelayBeforeStartup
+      - UPS.Output.DelayBeforeStartup
+      - UPS.OutletSystem.Outlet.DelayBeforeStartup
+    decimals: 0
+    negative_is_none: true
+
+  input.voltage:
+    paths:
+      - UPS.Input.Voltage
+      - UPS.PowerConverter.Input.Voltage
+      - UPS.PowerConverter.Input[1].Voltage
+    decimals: 1
+  input.voltage.nominal:
+    paths:
+      - UPS.Input.ConfigVoltage
+      - UPS.PowerConverter.Input.ConfigVoltage
+      - UPS.PowerConverter.Input[1].ConfigVoltage
+      - UPS.Flow.ConfigVoltage
+    decimals: 0
+  input.frequency:
+    paths:
+      - UPS.Input.Frequency
+      - UPS.PowerConverter.Input.Frequency
+      - UPS.PowerConverter.Input[1].Frequency
+    decimals: 1
+  input.frequency.nominal:
+    paths:
+      - UPS.Input.ConfigFrequency
+      - UPS.Flow.ConfigFrequency
+    decimals: 0
+  input.transfer.low:
+    paths:
+      - UPS.Input.LowVoltageTransfer
+      - UPS.Output.LowVoltageTransfer
+      - UPS.PowerConverter.Output.LowVoltageTransfer
+    decimals: 0
+    writable: true
+  input.transfer.high:
+    paths:
+      - UPS.Input.HighVoltageTransfer
+      - UPS.Output.HighVoltageTransfer
+      - UPS.PowerConverter.Output.HighVoltageTransfer
+    decimals: 0
+    writable: true
+
+  output.voltage:
+    paths:
+      - UPS.Output.Voltage
+      - UPS.PowerConverter.Output.Voltage
+      - UPS.PowerSummary.Output.Voltage
+    decimals: 1
+  output.voltage.nominal:
+    paths:
+      - UPS.Output.ConfigVoltage
+      - UPS.PowerConverter.Output.ConfigVoltage
+    decimals: 0
+  output.frequency:
+    paths:
+      - UPS.Output.Frequency
+      - UPS.PowerConverter.Output.Frequency
+    decimals: 1
+  output.current:
+    paths:
+      - UPS.Output.Current
+      - UPS.PowerConverter.Output.Current
+    decimals: 1
+
+# Status flags for ups.status. A flag is set when its field equals `when`
+# (default 1).
+flags:
+  - flag: OL
+    paths: [UPS.PowerSummary.PresentStatus.ACPresent, UPS.PresentStatus.ACPresent]
+  - flag: OB
+    paths: [UPS.PowerSummary.PresentStatus.ACPresent, UPS.PresentStatus.ACPresent]
+    when: 0
+  - flag: CHRG
+    paths: [UPS.PowerSummary.PresentStatus.Charging, UPS.PresentStatus.Charging]
+  - flag: DISCHRG
+    paths: [UPS.PowerSummary.PresentStatus.Discharging, UPS.PresentStatus.Discharging]
+  - flag: LB
+    paths: [UPS.PowerSummary.PresentStatus.BelowRemainingCapacityLimit, UPS.PresentStatus.BelowRemainingCapacityLimit]
+  - flag: LB
+    paths: [UPS.PowerSummary.PresentStatus.ShutdownImminent, UPS.PresentStatus.ShutdownImminent]
+  - flag: LB
+    paths: [UPS.PowerSummary.PresentStatus.RemainingTimeLimitExpired, UPS.PresentStatus.RemainingTimeLimitExpired]
+  - flag: RB
+    paths: [UPS.PowerSummary.PresentStatus.NeedReplacement, UPS.Battery.PresentStatus.NeedReplacement, UPS.PresentStatus.NeedReplacement]
+  - flag: OVER
+    paths: [UPS.PowerSummary.PresentStatus.Overload, UPS.Output.Overload, UPS.PowerConverter.Output.Overload, UPS.PresentStatus.Overload]
+  - flag: BOOST
+    paths: [UPS.PowerSummary.PresentStatus.Boost, UPS.Output.Boost, UPS.PowerConverter.Output.Boost]
+  - flag: TRIM
+    paths: [UPS.PowerSummary.PresentStatus.Buck, UPS.Output.Buck, UPS.PowerConverter.Output.Buck]
+
+# Instant commands write `value` to the first path the device has.
+commands:
+  beeper.disable:
+    paths: [UPS.PowerSummary.AudibleAlarmControl]
+    value: 1
+  beeper.enable:
+    paths: [UPS.PowerSummary.AudibleAlarmControl]
+    value: 2
+  beeper.mute:
+    paths: [UPS.PowerSummary.AudibleAlarmControl]
+    value: 3
+  test.battery.start.quick:
+    paths: [UPS.BatterySystem.Test, UPS.Battery.Test, UPS.Output.Test]
+    value: 1
+  test.battery.start.deep:
+    paths: [UPS.BatterySystem.Test, UPS.Battery.Test, UPS.Output.Test]
+    value: 2
+  test.battery.stop:
+    paths: [UPS.BatterySystem.Test, UPS.Battery.Test, UPS.Output.Test]
+    value: 3
