@@ -1,0 +1,193 @@
+openapi: 3.1.0
+info:
+  title: nut-ng REST API
+  version: v1
+  description: |
+    UPS state from nut-ng. Read endpoints are open to anyone who can reach
+    the listen address. Commands and variable changes need a bearer token
+    (api.token or api.token_env in nutng.yaml); without one they are refused
+    over the network and only allowed through the local nutng CLI.
+servers:
+  - url: http://127.0.0.1:9300
+paths:
+  /healthz:
+    get:
+      summary: Liveness check
+      responses:
+        "200": { description: The daemon is running, content: { text/plain: { schema: { type: string } } } }
+  /api/v1:
+    get:
+      summary: API information
+      responses:
+        "200": { description: Name and version, content: { application/json: { schema: { type: object } } } }
+  /api/v1/ups:
+    get:
+      summary: List every UPS with its full state
+      responses:
+        "200":
+          description: All UPSes, in config order
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ups: { type: array, items: { $ref: "#/components/schemas/UPS" } }
+  /api/v1/ups/{ups}:
+    parameters: [{ $ref: "#/components/parameters/ups" }]
+    get:
+      summary: Get one UPS
+      responses:
+        "200": { description: The UPS, content: { application/json: { schema: { $ref: "#/components/schemas/UPS" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/ups/{ups}/vars:
+    parameters: [{ $ref: "#/components/parameters/ups" }]
+    get:
+      summary: Get all variables of a UPS
+      responses:
+        "200":
+          description: Variables by name
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: { $ref: "#/components/schemas/Variable" } }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/ups/{ups}/vars/{var}:
+    parameters:
+      - { $ref: "#/components/parameters/ups" }
+      - { name: var, in: path, required: true, schema: { type: string }, example: battery.charge }
+    get:
+      summary: Get one variable
+      responses:
+        "200": { description: The variable, content: { application/json: { schema: { $ref: "#/components/schemas/Variable" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      summary: Change a writable variable
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [value], properties: { value: { type: string } } }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/ups/{ups}/commands:
+    parameters: [{ $ref: "#/components/parameters/ups" }]
+    get:
+      summary: List the instant commands a UPS supports
+      responses:
+        "200":
+          description: Commands
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Command" } }
+  /api/v1/ups/{ups}/commands/{cmd}:
+    parameters:
+      - { $ref: "#/components/parameters/ups" }
+      - { name: cmd, in: path, required: true, schema: { type: string }, example: test.battery.start }
+    post:
+      summary: Run an instant command
+      security: [{ bearer: [] }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, properties: { param: { type: string } } }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/ups/{ups}/history/{var}:
+    parameters:
+      - { $ref: "#/components/parameters/ups" }
+      - { name: var, in: path, required: true, schema: { type: string }, example: battery.charge }
+    get:
+      summary: Recent samples of a numeric variable (up to one hour, every 10 seconds)
+      responses:
+        "200":
+          description: Samples, oldest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ups: { type: string }
+                  var: { type: string }
+                  unit: { type: string }
+                  samples:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        t: { type: string, format: date-time }
+                        v: { type: number }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/events:
+    get:
+      summary: Stream events (Server-Sent Events)
+      description: |
+        Each message has `event: <type>` and `data: <Event JSON>`. Types are
+        update, on_battery, on_line, low_battery, replace_battery, overload,
+        forced_shutdown, comm_lost, comm_restored, driver_error and command.
+      parameters:
+        - { name: ups, in: query, schema: { type: string }, description: Only events for this UPS }
+        - { name: recent, in: query, schema: { type: integer }, description: Replay this many recent notable events first }
+        - { name: notable, in: query, schema: { type: boolean }, description: Skip update events }
+      responses:
+        "200":
+          description: Event stream
+          content:
+            text/event-stream:
+              schema: { $ref: "#/components/schemas/Event" }
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+  parameters:
+    ups: { name: ups, in: path, required: true, schema: { type: string }, example: rack }
+  responses:
+    OK:
+      description: Done
+      content: { application/json: { schema: { type: object, properties: { ok: { type: boolean } } } } }
+    Error:
+      description: Error with an explanation
+      content: { application/json: { schema: { type: object, properties: { error: { type: string } } } } }
+  schemas:
+    Variable:
+      type: object
+      properties:
+        name: { type: string, example: battery.charge }
+        value: { type: string, example: "87" }
+        unit: { type: string, example: "%" }
+        writable: { type: boolean }
+        updated: { type: string, format: date-time }
+    Command:
+      type: object
+      properties:
+        name: { type: string, example: test.battery.start }
+        description: { type: string }
+    UPS:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        driver: { type: string }
+        state: { type: string, enum: [connecting, connected, stale, failed] }
+        last_error: { type: string }
+        last_update: { type: string, format: date-time }
+        restarts: { type: integer }
+        vars: { type: object, additionalProperties: { $ref: "#/components/schemas/Variable" } }
+        commands: { type: array, items: { $ref: "#/components/schemas/Command" } }
+    Event:
+      type: object
+      properties:
+        seq: { type: integer }
+        time: { type: string, format: date-time }
+        ups: { type: string }
+        type: { type: string }
+        message: { type: string }
+        changed: { type: object, additionalProperties: { type: string } }

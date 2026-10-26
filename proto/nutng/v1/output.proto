@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+// Output plugins publish UPS state (MQTT, webhooks, other protocols).
+// An executable named nutng-output-<name> serves OutputService. While
+// RunOutput is in progress, the plugin calls back into the core through
+// HostService, reached via the go-plugin broker id passed in RunOutput.
+package nutng.v1;
+
+import "google/protobuf/struct.proto";
+import "nutng/v1/types.proto";
+
+option go_package = "github.com/nut-ng/nut-ng/gen/nutng/v1;nutngv1";
+
+service OutputService {
+  rpc DescribeOutput(DescribeOutputRequest) returns (DescribeOutputResponse);
+  rpc ValidateOutputConfig(ValidateOutputConfigRequest) returns (ValidateOutputConfigResponse);
+  // Runs until the core cancels the call (shutdown or config reload).
+  rpc RunOutput(RunOutputRequest) returns (RunOutputResponse);
+}
+
+message DescribeOutputRequest {}
+
+message DescribeOutputResponse {
+  PluginInfo info = 1;
+}
+
+message ValidateOutputConfigRequest {
+  google.protobuf.Struct config = 1;
+}
+
+message ValidateOutputConfigResponse {
+  repeated string errors = 1;
+}
+
+message RunOutputRequest {
+  google.protobuf.Struct config = 1;
+  // go-plugin broker id on which the core serves HostService.
+  uint32 host_broker_id = 2;
+}
+
+message RunOutputResponse {}
+
+// HostService is served by the core for output plugins. Commands and
+// variable changes are subject to the ACL set for the output in nutng.yaml.
+service HostService {
+  rpc ListUPS(ListUPSRequest) returns (ListUPSResponse);
+  rpc GetUPS(GetUPSRequest) returns (GetUPSResponse);
+  rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
+  rpc SubscribeEvents(SubscribeEventsRequest) returns (stream SubscribeEventsResponse);
+  rpc RunUPSCommand(RunUPSCommandRequest) returns (RunUPSCommandResponse);
+  rpc SetUPSVar(SetUPSVarRequest) returns (SetUPSVarResponse);
+}
+
+message ListUPSRequest {}
+
+message ListUPSResponse {
+  repeated UPS ups = 1;
+}
+
+message GetUPSRequest {
+  string name = 1;
+}
+
+message GetUPSResponse {
+  UPS ups = 1;
+}
+
+message GetHistoryRequest {
+  string ups = 1;
+  string variable = 2;
+}
+
+message GetHistoryResponse {
+  repeated Sample samples = 1;
+}
+
+message SubscribeEventsRequest {
+  // Only events for this UPS; empty for all.
+  string ups = 1;
+  // Replay up to this many recent notable events first.
+  uint32 recent = 2;
+}
+
+message SubscribeEventsResponse {
+  Event event = 1;
+}
+
+message RunUPSCommandRequest {
+  string ups = 1;
+  string command = 2;
+  string param = 3;
+}
+
+message RunUPSCommandResponse {}
+
+message SetUPSVarRequest {
+  string ups = 1;
+  string variable = 2;
+  string value = 3;
+}
+
+message SetUPSVarResponse {}

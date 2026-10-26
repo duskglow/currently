@@ -1,0 +1,28 @@
+# Example nutng configuration. Every setting is optional.
+
+ups:
+  # Each key is a UPS name, used in the CLI and the API.
+  lab:
+    driver: simulator          # the only driver so far; usbhid is next
+    description: Simulated UPS for testing
+    stale_after: 30s           # mark the UPS stale if it stays silent this long
+    # Everything else is passed to the driver. Simulator options:
+    scenario: cycle            # online, onbattery or cycle
+    online_for: 2m             # cycle: time on mains power
+    outage_for: 1m             # cycle: length of each outage
+    speed: 1                   # >1 runs the battery model faster than real time
+    runtime: 30m               # full-charge runtime at 50% load
+    load: 35                   # percent
+
+listen:
+  http: 127.0.0.1:9300         # REST API; ":9300" for all interfaces, or "off"
+  # control: /run/nutng/nutng.sock   # socket the nutng CLI uses
+
+api:
+  # Commands and variable changes over HTTP need this bearer token.
+  # Without one, the HTTP API is read-only.
+  # token_env: NUTNG_TOKEN     # read the token from this environment variable
+
+log:
+  level: info                  # debug, info, warn, error
+  format: text                 # text or json

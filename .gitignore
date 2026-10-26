@@ -1,0 +1,17 @@
+# Build output
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+coverage.*
+
+# Local runtime files
+*.sock
+/nutng.yaml
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
