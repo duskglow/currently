@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // Supply is a UPS that powers this computer.
@@ -348,7 +348,7 @@ func (e *Engine) shutdown(ctx context.Context, reason string, critical []Supply)
 		}
 	}
 
-	// 1. As primary, tell NUT clients (upsmon secondaries, other nutng
+	// 1. As primary, tell NUT clients (upsmon secondaries, other Currently
 	// instances) to shut down.
 	var fsd []string
 	for _, u := range local {
@@ -388,7 +388,7 @@ func (e *Engine) shutdown(ctx context.Context, reason string, critical []Supply)
 	}
 
 	// 4. Hooks.
-	env := []string{"NUTNG_SHUTDOWN_REASON=" + reason}
+	env := []string{"CURRENTLY_SHUTDOWN_REASON=" + reason}
 	for _, h := range e.cfg.Hooks {
 		action := "Run hook: " + h
 		if !allowed(action, "") {

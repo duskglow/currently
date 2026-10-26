@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/nut-ng/nut-ng/drivers/usbhid/hid"
+	"github.com/duskglow/currently/drivers/usbhid/hid"
 )
 
 // The Linux transport uses hidraw: /dev/hidrawN for reports, and sysfs for
@@ -100,8 +100,8 @@ func openDevice(info DeviceInfo) (Device, error) {
 	f, err := os.OpenFile(info.Path, os.O_RDWR, 0)
 	if err != nil {
 		if errors.Is(err, os.ErrPermission) {
-			return nil, fmt.Errorf("permission denied opening %s (%s). Install the nutng udev rule "+
-				"(packaging/linux/90-nutng-ups.rules) and replug the UPS, or run nutng as root", info.Path, info.Description())
+			return nil, fmt.Errorf("permission denied opening %s (%s). Install the Currently udev rule "+
+				"(packaging/linux/90-currently-ups.rules) and replug the UPS, or run Currently as root", info.Path, info.Description())
 		}
 		return nil, err
 	}

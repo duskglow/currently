@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nut-ng/nut-ng/internal/suggest"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/internal/suggest"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // UPSSpec configures one UPS.

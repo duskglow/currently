@@ -1,5 +1,5 @@
 // Package nutclient is the "nut" driver: it reads a UPS from a NUT server
-// (another nutng, or NUT's upsd) over the network. A computer powered by a
+// (another Currently, or NUT's upsd) over the network. A computer powered by a
 // UPS attached to another machine uses it to follow that machine, as a
 // NUT upsmon secondary does: with a username, it logs in, so the primary
 // waits for it before cutting power.
@@ -18,13 +18,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nut-ng/nut-ng/internal/nutwire"
-	"github.com/nut-ng/nut-ng/internal/suggest"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/internal/nutwire"
+	"github.com/duskglow/currently/internal/suggest"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 const (
-	// DriverName is the name used in `driver:` in nutng.yaml.
+	// DriverName is the name used in `driver:` in currently.yaml.
 	DriverName = "nut"
 	// Version of the driver.
 	Version = "0.1.0"
@@ -100,7 +100,7 @@ func New() *Driver { return &Driver{} }
 // Info implements sdk.Driver.
 func (*Driver) Info() sdk.Info {
 	return sdk.Info{Name: DriverName, Kind: sdk.KindDriver, Version: Version,
-		Description: "A UPS on a NUT server (another nutng, or NUT's upsd)"}
+		Description: "A UPS on a NUT server (another Currently, or NUT's upsd)"}
 }
 
 // Discover implements sdk.Driver.
@@ -415,7 +415,7 @@ func (d *device) mapErr(what string, fn func() error) error {
 	case err == nil:
 		return nil
 	case isCode(err, "ACCESS-DENIED", "USERNAME-REQUIRED", "PASSWORD-REQUIRED"):
-		return fmt.Errorf("%s: the NUT server refused (%v); the username in nutng.yaml needs admin rights there: %w", what, err, sdk.ErrNotSupported)
+		return fmt.Errorf("%s: the NUT server refused (%v); the username in currently.yaml needs admin rights there: %w", what, err, sdk.ErrNotSupported)
 	case isCode(err, "CMD-NOT-SUPPORTED", "VAR-NOT-SUPPORTED", "READONLY"):
 		return fmt.Errorf("%s: %v: %w", what, err, sdk.ErrNotSupported)
 	case isCode(err, "INVALID-VALUE", "INVALID-ARGUMENT"):

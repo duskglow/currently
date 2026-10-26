@@ -19,9 +19,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	nutngv1 "github.com/nut-ng/nut-ng/gen/nutng/v1"
-	"github.com/nut-ng/nut-ng/pkg/plugin"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	currentlyv1 "github.com/duskglow/currently/gen/currently/v1"
+	"github.com/duskglow/currently/pkg/plugin"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // startTimeout bounds how long a plugin may take to print its handshake.
@@ -37,8 +37,8 @@ type process struct {
 
 	mu      sync.Mutex
 	client  *goplugin.Client
-	driver  nutngv1.DriverServiceClient
-	output  nutngv1.OutputServiceClient
+	driver  currentlyv1.DriverServiceClient
+	output  currentlyv1.OutputServiceClient
 	starts  int
 	lastErr string
 	stopped bool
@@ -92,13 +92,13 @@ func (p *process) ensure() error {
 		c.Kill()
 		return err
 	}
-	p.client, p.driver, p.output = c, d.(nutngv1.DriverServiceClient), o.(nutngv1.OutputServiceClient)
+	p.client, p.driver, p.output = c, d.(currentlyv1.DriverServiceClient), o.(currentlyv1.OutputServiceClient)
 	p.starts++
 	p.lastErr = ""
 	return nil
 }
 
-func (p *process) clients() (nutngv1.DriverServiceClient, nutngv1.OutputServiceClient, error) {
+func (p *process) clients() (currentlyv1.DriverServiceClient, currentlyv1.OutputServiceClient, error) {
 	if err := p.ensure(); err != nil {
 		return nil, nil, err
 	}
@@ -116,18 +116,18 @@ func (p *process) describe(ctx context.Context) (sdk.Info, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	var info *nutngv1.PluginInfo
-	if resp, err := d.DescribeDriver(ctx, &nutngv1.DescribeDriverRequest{}); err == nil {
+	var info *currentlyv1.PluginInfo
+	if resp, err := d.DescribeDriver(ctx, &currentlyv1.DescribeDriverRequest{}); err == nil {
 		info = resp.GetInfo()
 	} else if status.Code(err) != codes.Unimplemented {
 		return sdk.Info{}, fmt.Errorf("describe plugin %s: %w", p.source, err)
-	} else if resp, err := o.DescribeOutput(ctx, &nutngv1.DescribeOutputRequest{}); err == nil {
+	} else if resp, err := o.DescribeOutput(ctx, &currentlyv1.DescribeOutputRequest{}); err == nil {
 		info = resp.GetInfo()
 	} else {
 		return sdk.Info{}, fmt.Errorf("describe plugin %s: %w", p.source, err)
 	}
 	if v := info.GetProtocolVersion(); v != sdk.ProtocolVersion {
-		return sdk.Info{}, fmt.Errorf("plugin %s speaks plugin protocol %d, but this nutng speaks %d", p.source, v, sdk.ProtocolVersion)
+		return sdk.Info{}, fmt.Errorf("plugin %s speaks plugin protocol %d, but this Currently speaks %d", p.source, v, sdk.ProtocolVersion)
 	}
 	if info.GetName() == "" {
 		return sdk.Info{}, fmt.Errorf("plugin %s did not report a name", p.source)

@@ -55,9 +55,9 @@ jobs:
         run: |
           $v = "${{ github.ref_name }}".TrimStart("v")
           gh release download ${{ github.ref_name }} --pattern "*_windows_amd64.zip" --dir dist
-          Expand-Archive "dist\nutng_${v}_windows_amd64.zip" -DestinationPath dist\win
-          packaging\windows\build-msi.ps1 -Version $v -BinDir dist\win -Out "dist\nutng_${v}_windows_amd64.msi"
-          gh release upload ${{ github.ref_name }} "dist\nutng_${v}_windows_amd64.msi"
+          Expand-Archive "dist\currently_${v}_windows_amd64.zip" -DestinationPath dist\win
+          packaging\windows\build-msi.ps1 -Version $v -BinDir dist\win -Out "dist\currently_${v}_windows_amd64.msi"
+          gh release upload ${{ github.ref_name }} "dist\currently_${v}_windows_amd64.msi"
 
   freebsd-pkg:
     needs: goreleaser
@@ -73,10 +73,10 @@ jobs:
           usesh: true
           run: |
             v=$(echo "${{ github.ref_name }}" | sed 's/^v//')
-            sh packaging/freebsd/make-pkg.sh "$v" "dist/nutng_${v}_freebsd_amd64.tar.gz" dist
+            sh packaging/freebsd/make-pkg.sh "$v" "dist/currently_${v}_freebsd_amd64.tar.gz" dist
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
           v=${GITHUB_REF_NAME#v}
-          cp dist/nutng-${v}.pkg dist/nutng_${v}_freebsd_amd64.pkg
-          gh release upload ${{ github.ref_name }} dist/nutng_${v}_freebsd_amd64.pkg
+          cp dist/currently-${v}.pkg dist/currently_${v}_freebsd_amd64.pkg
+          gh release upload ${{ github.ref_name }} dist/currently_${v}_freebsd_amd64.pkg

@@ -1,6 +1,6 @@
 // Package rest serves UPS state as a JSON API over HTTP, with a
 // Server-Sent Events stream of changes. The same handler serves the local
-// control socket used by the nutng CLI.
+// control socket used by the Currently CLI.
 package rest
 
 import (
@@ -17,8 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nut-ng/nut-ng/internal/suggest"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/internal/suggest"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 //go:embed openapi.yaml
@@ -101,7 +101,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.mux.Serv
 
 func (h *handler) index(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
-		"name":    "nut-ng",
+		"name":    "Currently",
 		"version": h.opts.Version,
 		"api":     "v1",
 		"docs":    "/api/v1/openapi.yaml",
@@ -188,12 +188,12 @@ func (h *handler) mutation(next http.HandlerFunc) http.HandlerFunc {
 		if !h.opts.Trusted {
 			if h.opts.Token == "" {
 				writeError(w, http.StatusForbidden,
-					"changes over the network are disabled; set api.token or api.token_env in nutng.yaml to allow them, or use the nutng CLI on the UPS host")
+					"changes over the network are disabled; set api.token or api.token_env in currently.yaml to allow them, or use the Currently CLI on the UPS host")
 				return
 			}
 			got, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 			if !ok || subtle.ConstantTimeCompare([]byte(got), []byte(h.opts.Token)) != 1 {
-				w.Header().Set("WWW-Authenticate", `Bearer realm="nutng"`)
+				w.Header().Set("WWW-Authenticate", `Bearer realm="currently"`)
 				writeError(w, http.StatusUnauthorized, "missing or wrong bearer token")
 				return
 			}
@@ -265,7 +265,7 @@ func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
-	_, _ = fmt.Fprint(w, ": nutng event stream\n\n")
+	_, _ = fmt.Fprint(w, ": Currently event stream\n\n")
 
 	send := func(e sdk.Event) bool {
 		if only != "" && e.UPS != only {

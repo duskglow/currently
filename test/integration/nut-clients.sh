@@ -1,17 +1,17 @@
 #!/bin/bash
-# Tests nutng's NUT protocol server against the real NUT clients (upsc,
+# Tests Currently's NUT protocol server against the real NUT clients (upsc,
 # upscmd, upsrw and upsmon as primary and secondary through a simulated
 # power failure).
 #
-#   test/integration/nut-clients.sh path/to/nutng
+#   test/integration/nut-clients.sh path/to/currently
 #
 # Uses the installed NUT clients (`apt install nut-client`), or on Debian
 # and Ubuntu downloads and unpacks them without installing when they are
-# missing. Linux only. Nothing outside /tmp/nutng-nut-test is touched; the
+# missing. Linux only. Nothing outside /tmp/currently-nut-test is touched; the
 # upsmon shutdown commands only write marker files.
 set -u
-NUTNG="$(realpath "${1:?usage: $0 path/to/nutng}")"
-T=/tmp/nutng-nut-test
+CURRENTLY="$(realpath "${1:?usage: $0 path/to/currently}")"
+T=/tmp/currently-nut-test
 rm -rf "$T"; mkdir -p "$T"/{pkgs,root,state1,state2}
 
 if command -v upsc >/dev/null && [ -x /lib/nut/upsmon ]; then
@@ -31,7 +31,7 @@ else
 fi
 echo "NUT client: $("$B/upsc" -V 2>&1 | head -1)"
 
-cat > "$T/nutng.yaml" <<'EOF'
+cat > "$T/currently.yaml" <<'EOF'
 ups:
   sim:
     driver: simulator
@@ -42,14 +42,14 @@ ups:
 listen:
   http: 127.0.0.1:19300
   nut: 127.0.0.1:13493
-  control: /tmp/nutng-nut-test/nutng.sock
+  control: /tmp/currently-nut-test/currently.sock
 users:
   upsmon: {password: pw1, role: primary}
   mon: {password: pw2, role: secondary}
   admin: {password: pw3, role: admin}
 EOF
-"$NUTNG" --config "$T/nutng.yaml" serve --log-level debug >"$T/nutng.log" 2>&1 &
-NUTNG_PID=$!
+"$CURRENTLY" --config "$T/currently.yaml" serve --log-level debug >"$T/currently.log" 2>&1 &
+CURRENTLY_PID=$!
 sleep 2
 U=sim@localhost:13493
 pass=0; fail=0
@@ -113,14 +113,14 @@ start_upsmon 1 "upsmon pw1 primary"; PID1=$!
 start_upsmon 2 "mon pw2 secondary"; PID2=$!
 sleep 4
 expect "upsc -c shows both upsmon clients" '127.0.0.1' "$B/upsc" -c $U
-"$NUTNG" --config "$T/nutng.yaml" cmd sim sim.power.fail >/dev/null
+"$CURRENTLY" --config "$T/currently.yaml" cmd sim sim.power.fail >/dev/null
 echo "     (mains failed; waiting for low battery, FSD and both shutdown commands)"
 for s in $(seq 1 90); do
   [ -f "$T/state1/shutdown.flag" ] && [ -f "$T/state2/shutdown.flag" ] && break
   sleep 1
 done
 echo "     done after ${s}s"
-expect "nutng recorded FSD from the primary" 'forced shutdown \(FSD\) set' cat "$T/nutng.log"
+expect "currently recorded FSD from the primary" 'forced shutdown \(FSD\) set' cat "$T/currently.log"
 succeeds "secondary upsmon ran its shutdown command" test -f "$T/state2/shutdown.flag"
 succeeds "primary upsmon ran its shutdown command" test -f "$T/state1/shutdown.flag"
 succeeds "primary wrote its POWERDOWNFLAG" test -f "$T/state1/killpower"
@@ -129,7 +129,7 @@ grep -iE "battery|FSD|forced|shutdown|login|primary|secondar" "$T/upsmon1.log" |
 echo "     secondary upsmon log (excerpt):"
 grep -iE "battery|FSD|forced|shutdown|login" "$T/upsmon2.log" | head -8 | sed 's/^/       /'
 
-kill $PID1 $PID2 $NUTNG_PID 2>/dev/null
+kill $PID1 $PID2 $CURRENTLY_PID 2>/dev/null
 wait 2>/dev/null
 echo "--- result: $pass passed, $fail failed"
 [ $fail -eq 0 ]

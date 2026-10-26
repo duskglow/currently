@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // The UPS-MIB (RFC 1628), filled from NUT variables, plus the parts of
@@ -135,7 +135,7 @@ func upsTree(u sdk.UPS, t *upsTrack, agentVersion string, now time.Time) []VarBi
 	b.str(oidIdent.Append(1, 0), firstOf(u.Value("device.mfr"), u.Value("ups.mfr")), 31)
 	b.str(oidIdent.Append(2, 0), firstOf(u.Value("device.model"), u.Value("ups.model")), 63)
 	b.str(oidIdent.Append(3, 0), u.Value("ups.firmware"), 63)
-	b.str(oidIdent.Append(4, 0), "nut-ng "+agentVersion, 63)
+	b.str(oidIdent.Append(4, 0), "Currently "+agentVersion, 63)
 	b.str(oidIdent.Append(5, 0), u.Name, 63)
 	b.str(oidIdent.Append(6, 0), u.Description, 63)
 

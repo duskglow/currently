@@ -1,7 +1,7 @@
 {
-  "format": "nutng-hid-capture/1",
+  "format": "currently-hid-capture/1",
   "captured": "2026-10-26T04:49:49.7464842Z",
-  "nutng_version": "dev-0609b88",
+  "currently_version": "dev-0609b88",
   "os": "windows/amd64",
   "device": {
     "path": "\\\\?\\HID#VID_0764\u0026PID_0601#9\u00261c40ed41\u00260\u00260000#{4d1e55b2-f16f-11cf-88cb-001111000030}",

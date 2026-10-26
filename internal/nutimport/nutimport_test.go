@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nut-ng/nut-ng/internal/config"
-	"github.com/nut-ng/nut-ng/internal/registry"
+	"github.com/duskglow/currently/internal/config"
+	"github.com/duskglow/currently/internal/registry"
 )
 
 func convert(t *testing.T, dir string) (*Result, *config.Config) {
@@ -15,7 +15,7 @@ func convert(t *testing.T, dir string) (*Result, *config.Config) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c, err := config.Parse("nutng.yaml", []byte(res.YAML))
+	c, err := config.Parse("currently.yaml", []byte(res.YAML))
 	if err != nil {
 		t.Fatalf("%v\n%s", err, res.YAML)
 	}

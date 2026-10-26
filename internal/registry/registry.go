@@ -1,4 +1,4 @@
-// Package registry keeps the drivers and outputs nutng knows about.
+// Package registry keeps the drivers and outputs Currently knows about.
 package registry
 
 import (
@@ -6,11 +6,11 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/nut-ng/nut-ng/drivers/execdriver"
-	"github.com/nut-ng/nut-ng/drivers/nutclient"
-	"github.com/nut-ng/nut-ng/drivers/simulator"
-	"github.com/nut-ng/nut-ng/drivers/usbhid"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/drivers/execdriver"
+	"github.com/duskglow/currently/drivers/nutclient"
+	"github.com/duskglow/currently/drivers/simulator"
+	"github.com/duskglow/currently/drivers/usbhid"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // Registry maps plugin names to implementations.
@@ -25,7 +25,7 @@ func New() *Registry {
 }
 
 // Builtin returns a registry holding the drivers and outputs compiled into
-// nutng.
+// Currently.
 func Builtin() *Registry {
 	r := New()
 	r.AddDriver(usbhid.New())

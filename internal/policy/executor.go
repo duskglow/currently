@@ -29,7 +29,7 @@ var ErrRefused = errors.New("refused to shut down")
 // NeverShutdownEnv, when set to any value, blocks the built-in OS shutdown
 // command. Use it when testing a shutdown policy on a machine that must
 // stay up; custom shutdown.command values still run.
-const NeverShutdownEnv = "NUTNG_NEVER_SHUTDOWN"
+const NeverShutdownEnv = "CURRENTLY_NEVER_SHUTDOWN"
 
 // BuiltinBlocked reports why the built-in OS shutdown may not run, or "".
 // Test binaries are always blocked.

@@ -1,27 +1,27 @@
 # Configuration reference
 
-nutng reads one YAML file:
+Currently reads one YAML file:
 
 | Platform | Default path |
 |---|---|
-| Linux | `/etc/nutng/nutng.yaml` |
-| Windows | `C:\ProgramData\nutng\nutng.yaml` |
-| macOS, FreeBSD | `/usr/local/etc/nutng/nutng.yaml` |
+| Linux | `/etc/currently/currently.yaml` |
+| Windows | `C:\ProgramData\currently\currently.yaml` |
+| macOS, FreeBSD | `/usr/local/etc/currently/currently.yaml` |
 
-`--config` or the `NUTNG_CONFIG` environment variable choose another
-file. Every setting is optional; without a file nutng monitors every USB
-UPS it finds. [nutng.example.yaml](https://github.com/nut-ng/nut-ng/blob/main/nutng.example.yaml)
+`--config` or the `CURRENTLY_CONFIG` environment variable choose another
+file. Every setting is optional; without a file Currently monitors every USB
+UPS it finds. [currently.example.yaml](https://github.com/duskglow/currently/blob/main/currently.example.yaml)
 shows them all with comments.
 
 ```sh
-nutng config validate   # check it, with file:line errors and "did you mean" hints
-nutng config show       # the effective config with defaults (secrets hidden)
+currently config validate   # check it, with file:line errors and "did you mean" hints
+currently config show       # the effective config with defaults (secrets hidden)
 ```
 
 Settings ending in `_env` name an environment variable that holds a
 secret, so the file itself can be world-readable. The packaged services
-read those variables from `/etc/default/nutng` (Linux) or
-`/usr/local/etc/nutng/nutng.env` (FreeBSD).
+read those variables from `/etc/default/currently` (Linux) or
+`/usr/local/etc/currently/currently.env` (FreeBSD).
 
 ## `ups`
 
@@ -31,7 +31,7 @@ the NUT protocol (`upsc rack@host`) and the API.
 | Setting | Default | Meaning |
 |---|---|---|
 | `driver` | `usbhid` | `usbhid`, `nut`, `exec`, `simulator`, `replay`, or a driver plugin |
-| `description` | | Shown by `nutng status` and `upsc -L` |
+| `description` | | Shown by `currently status` and `upsc -L` |
 | `stale_after` | `30s` | Mark the UPS stale when it stays silent this long |
 | *anything else* | | Passed to the driver; see [UPS drivers](drivers.md) |
 
@@ -79,7 +79,7 @@ login.
 
 ## `shutdown`
 
-Without this section nutng never shuts the computer down. See
+Without this section Currently never shuts the computer down. See
 [Shutting down](shutdown.md).
 
 | Setting | Default | Meaning |
@@ -107,9 +107,9 @@ outputs:
     allow_control: false       # let it run commands and set FSD
     broker: tcp://192.168.1.5:1883   # everything else goes to the plugin
 plugins:
-  dirs: [/opt/nutng/plugins]   # searched before the defaults
+  dirs: [/opt/currently/plugins]   # searched before the defaults
   commands:                    # plugins that need an interpreter
-    - ["python3", "/opt/nutng/myups/plugin.py"]
+    - ["python3", "/opt/currently/myups/plugin.py"]
 ```
 
 See [Plugins](plugins.md).

@@ -10,13 +10,13 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	"github.com/nut-ng/nut-ng/drivers/usbhid/hid"
+	"github.com/duskglow/currently/drivers/usbhid/hid"
 )
 
 // The macOS transport uses IOKit's IOHIDDevice API, loaded at run time
-// with purego so nutng needs no cgo. Devices are opened without seizing
+// with purego so Currently needs no cgo. Devices are opened without seizing
 // them, so macOS's own UPS support (the battery menu, Energy Saver
-// shutdown settings) keeps working alongside nutng. UPSes need no
+// shutdown settings) keeps working alongside Currently. UPSes need no
 // permission prompt: only keyboards and similar devices are protected.
 
 var iokit struct {
@@ -249,7 +249,7 @@ func openDevice(info DeviceInfo) (Device, error) {
 	case kIOReturnSuccess:
 	case kIOReturnNotPrivileged:
 		iokit.CFRelease(dev)
-		return nil, fmt.Errorf("not allowed to open %s; run nutng as root (the default service)", info.Description())
+		return nil, fmt.Errorf("not allowed to open %s; run Currently as root (the default service)", info.Description())
 	case kIOReturnExclusive:
 		iokit.CFRelease(dev)
 		return nil, fmt.Errorf("%s is in use by another program that opened it exclusively (NUT's usbhid-ups?)", info.Description())

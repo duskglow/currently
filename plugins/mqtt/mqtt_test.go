@@ -16,10 +16,10 @@ import (
 	"github.com/mochi-mqtt/server/v2/hooks/auth"
 	"github.com/mochi-mqtt/server/v2/listeners"
 
-	"github.com/nut-ng/nut-ng/drivers/simulator"
-	"github.com/nut-ng/nut-ng/internal/core"
-	"github.com/nut-ng/nut-ng/internal/plugins"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/drivers/simulator"
+	"github.com/duskglow/currently/internal/core"
+	"github.com/duskglow/currently/internal/plugins"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -124,66 +124,66 @@ func TestPublishesStateEventsAndDiscovery(t *testing.T) {
 	url := broker(t)
 	w := watch(t, url)
 	c := startCore(t)
-	stop := run(t, c, sdk.Config{"broker": url, "client_id": "nutng-test"})
+	stop := run(t, c, sdk.Config{"broker": url, "client_id": "currently-test"})
 
-	waitFor(t, "plugin status", func() bool { return w.last("nutng/status") == "online" })
-	waitFor(t, "UPS availability", func() bool { return w.last("nutng/rack/available") == "online" })
-	waitFor(t, "state", func() bool { return w.last("nutng/rack/state") != "" })
+	waitFor(t, "plugin status", func() bool { return w.last("currently/status") == "online" })
+	waitFor(t, "UPS availability", func() bool { return w.last("currently/rack/available") == "online" })
+	waitFor(t, "state", func() bool { return w.last("currently/rack/state") != "" })
 	var st struct {
 		Status string            `json:"status"`
 		Vars   map[string]string `json:"vars"`
 	}
-	if err := json.Unmarshal([]byte(w.last("nutng/rack/state")), &st); err != nil {
+	if err := json.Unmarshal([]byte(w.last("currently/rack/state")), &st); err != nil {
 		t.Fatal(err)
 	}
 	if st.Status != "OL" || st.Vars["battery.charge"] != "100" {
 		t.Errorf("state %+v", st)
 	}
 
-	waitFor(t, "discovery", func() bool { return w.last("homeassistant/sensor/nutng_rack/battery_charge/config") != "" })
+	waitFor(t, "discovery", func() bool { return w.last("homeassistant/sensor/currently_rack/battery_charge/config") != "" })
 	var disc map[string]any
-	_ = json.Unmarshal([]byte(w.last("homeassistant/sensor/nutng_rack/battery_charge/config")), &disc)
-	if disc["device_class"] != "battery" || disc["state_topic"] != "nutng/rack/state" || disc["unique_id"] != "nutng_rack_battery_charge" {
+	_ = json.Unmarshal([]byte(w.last("homeassistant/sensor/currently_rack/battery_charge/config")), &disc)
+	if disc["device_class"] != "battery" || disc["state_topic"] != "currently/rack/state" || disc["unique_id"] != "currently_rack_battery_charge" {
 		t.Errorf("discovery %v", disc)
 	}
-	if !strings.Contains(w.last("homeassistant/binary_sensor/nutng_rack/power/config"), `"device_class":"power"`) {
-		t.Errorf("binary sensor %s", w.last("homeassistant/binary_sensor/nutng_rack/power/config"))
+	if !strings.Contains(w.last("homeassistant/binary_sensor/currently_rack/power/config"), `"device_class":"power"`) {
+		t.Errorf("binary sensor %s", w.last("homeassistant/binary_sensor/currently_rack/power/config"))
 	}
 
 	if err := c.RunCommand(context.Background(), "rack", "sim.power.fail", ""); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "the on_battery event", func() bool {
-		for _, e := range w.all("nutng/rack/event") {
+		for _, e := range w.all("currently/rack/event") {
 			if strings.Contains(e, `"type":"on_battery"`) {
 				return true
 			}
 		}
 		return false
 	})
-	waitFor(t, "the OB state", func() bool { return strings.Contains(w.last("nutng/rack/state"), `"status":"OB`) })
+	waitFor(t, "the OB state", func() bool { return strings.Contains(w.last("currently/rack/state"), `"status":"OB`) })
 
 	// Commands over MQTT, allowed for this output.
-	w.c.Publish("nutng/rack/command/beeper.disable", 1, false, "")
-	waitFor(t, "the command result", func() bool { return strings.Contains(w.last("nutng/rack/command/result"), `"ok":true`) })
+	w.c.Publish("currently/rack/command/beeper.disable", 1, false, "")
+	waitFor(t, "the command result", func() bool { return strings.Contains(w.last("currently/rack/command/result"), `"ok":true`) })
 
 	stop()
-	waitFor(t, "offline on stop", func() bool { return w.last("nutng/status") == "offline" })
+	waitFor(t, "offline on stop", func() bool { return w.last("currently/status") == "offline" })
 }
 
 func TestCommandsRefusedWithoutAllowControl(t *testing.T) {
 	url := broker(t)
 	w := watch(t, url)
 	c := startCore(t)
-	run(t, plugins.ReadOnlyHost{Host: c}, sdk.Config{"broker": url, "client_id": "nutng-ro", "home_assistant": false})
-	waitFor(t, "state", func() bool { return w.last("nutng/rack/state") != "" })
-	w.c.Publish("nutng/rack/command/beeper.disable", 1, false, "")
-	waitFor(t, "the refusal", func() bool { return strings.Contains(w.last("nutng/rack/command/result"), "allow_control") })
+	run(t, plugins.ReadOnlyHost{Host: c}, sdk.Config{"broker": url, "client_id": "currently-ro", "home_assistant": false})
+	waitFor(t, "state", func() bool { return w.last("currently/rack/state") != "" })
+	w.c.Publish("currently/rack/command/beeper.disable", 1, false, "")
+	waitFor(t, "the refusal", func() bool { return strings.Contains(w.last("currently/rack/command/result"), "allow_control") })
 	u, _ := c.GetUPS("rack")
 	if u.Value("ups.beeper.status") != "enabled" {
 		t.Error("a read-only output changed the UPS")
 	}
-	if w.last("homeassistant/sensor/nutng_rack/battery_charge/config") != "" {
+	if w.last("homeassistant/sensor/currently_rack/battery_charge/config") != "" {
 		t.Error("discovery published with home_assistant: false")
 	}
 }

@@ -1,22 +1,22 @@
 #!/bin/bash
-# Tests nutng's SNMP agent against the net-snmp tools: snmpget, snmpwalk
+# Tests Currently's SNMP agent against the net-snmp tools: snmpget, snmpwalk
 # and snmpbulkwalk with v1, v2c and v3 (SHA-256/AES and MD5), and
 # snmptrapd receiving the UPS-MIB traps through a simulated outage.
 #
-#   test/integration/snmp.sh path/to/nutng
+#   test/integration/snmp.sh path/to/currently
 #
 # Needs the snmp and snmptrapd packages (`apt install snmp snmptrapd`).
-# Linux only. Nothing outside /tmp/nutng-snmp-test is touched.
+# Linux only. Nothing outside /tmp/currently-snmp-test is touched.
 set -u
-NUTNG="$(realpath "${1:?usage: $0 path/to/nutng}")"
-T=/tmp/nutng-snmp-test
+CURRENTLY="$(realpath "${1:?usage: $0 path/to/currently}")"
+T=/tmp/currently-snmp-test
 rm -rf "$T"; mkdir -p "$T"
 for c in snmpget snmpwalk snmpbulkwalk snmpset snmptrapd; do
   command -v $c >/dev/null || { echo "$c not found; install snmp and snmptrapd"; exit 1; }
 done
 echo "net-snmp: $(snmpget -V 2>&1)"
 
-cat > "$T/nutng.yaml" <<'EOF'
+cat > "$T/currently.yaml" <<'EOF'
 ups:
   rack:
     driver: simulator
@@ -30,7 +30,7 @@ listen:
   http: off
   metrics: off
   nut: off
-  control: /tmp/nutng-snmp-test/nutng.sock
+  control: /tmp/currently-snmp-test/currently.sock
   snmp:
     addr: 127.0.0.1:11161
     community: s3cret
@@ -51,8 +51,8 @@ EOF
 echo "authCommunity log traps" > "$T/snmptrapd.conf"
 snmptrapd -C -c "$T/snmptrapd.conf" -f -Lf "$T/traps.log" -n udp:127.0.0.1:11162 &
 TRAPD=$!
-"$NUTNG" --config "$T/nutng.yaml" serve --log-level debug >"$T/nutng.log" 2>&1 &
-NUTNG_PID=$!
+"$CURRENTLY" --config "$T/currently.yaml" serve --log-level debug >"$T/currently.log" 2>&1 &
+CURRENTLY_PID=$!
 sleep 2
 
 A=127.0.0.1:11161
@@ -78,7 +78,7 @@ count() {
 }
 
 echo "--- v2c"
-expect "sysDescr names nut-ng" 'STRING: "nut-ng' snmpget $V2 $A .1.3.6.1.2.1.1.1.0
+expect "sysDescr names Currently" 'STRING: "Currently' snmpget $V2 $A .1.3.6.1.2.1.1.1.0
 expect "sysObjectID is the UPS-MIB" "OID: $UPS\$" snmpget $V2 $A .1.3.6.1.2.1.1.2.0
 expect "sysLocation from the config" 'Test lab' snmpget $V2 $A .1.3.6.1.2.1.1.6.0
 expect "upsIdentName is the default UPS" 'STRING: "rack"' snmpget $V2 $A $UPS.1.1.5.0
@@ -129,9 +129,9 @@ expect "and the alarm table has onBattery" "OID: $UPS.1.6.3.2" snmpwalk -v2c -c 
 expect "and upsSecondsOnBattery counts" 'INTEGER: [0-9]+$' snmpget -v2c -c s3cret@lab -On $A $UPS.1.2.2.0
 
 echo "--- doctor"
-expect "nutng doctor reaches the agent" 'SNMP agent answers' "$NUTNG" --config "$T/nutng.yaml" doctor
+expect "currently doctor reaches the agent" 'SNMP agent answers' "$CURRENTLY" --config "$T/currently.yaml" doctor
 
-kill $NUTNG_PID $TRAPD 2>/dev/null
+kill $CURRENTLY_PID $TRAPD 2>/dev/null
 wait 2>/dev/null
 echo "--- result: $pass passed, $fail failed"
 [ $fail -eq 0 ]

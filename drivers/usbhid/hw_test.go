@@ -8,12 +8,12 @@ import (
 )
 
 // TestHardware reads every UPS attached to this machine and logs its fields
-// and values. It runs only with NUTNG_HW=1:
+// and values. It runs only with CURRENTLY_HW=1:
 //
-//	NUTNG_HW=1 go test ./drivers/usbhid -run TestHardware -v
+//	CURRENTLY_HW=1 go test ./drivers/usbhid -run TestHardware -v
 func TestHardware(t *testing.T) {
-	if os.Getenv("NUTNG_HW") == "" {
-		t.Skip("set NUTNG_HW=1 to test against attached UPS hardware")
+	if os.Getenv("CURRENTLY_HW") == "" {
+		t.Skip("set CURRENTLY_HW=1 to test against attached UPS hardware")
 	}
 	all, err := enumerate()
 	if err != nil {

@@ -1,0 +1,21 @@
+# systemd unit installed by the Currently packages. It matches the unit that
+# `currently service install` writes to /etc/systemd/system (which takes
+# precedence if both exist).
+[Unit]
+Description=Currently UPS monitor
+Documentation=https://github.com/duskglow/currently
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/currently serve
+Restart=always
+RestartSec=5
+# Secrets for *_env settings in currently.yaml, as NAME=value lines.
+EnvironmentFile=-/etc/default/currently
+# Currently runs as root so it can open any USB UPS and shut the computer
+# down. There is no filesystem sandboxing (ProtectSystem and the like),
+# because shutdown hooks are your own scripts and may write anywhere.
+
+[Install]
+WantedBy=multi-user.target

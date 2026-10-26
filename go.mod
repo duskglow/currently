@@ -1,4 +1,4 @@
-module github.com/nut-ng/nut-ng
+module github.com/duskglow/currently
 
 go 1.26.0
 

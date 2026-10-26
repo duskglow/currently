@@ -24,16 +24,16 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/nut-ng/nut-ng/internal/config"
-	"github.com/nut-ng/nut-ng/internal/core"
-	"github.com/nut-ng/nut-ng/internal/plugins"
-	"github.com/nut-ng/nut-ng/internal/policy"
-	"github.com/nut-ng/nut-ng/internal/registry"
-	"github.com/nut-ng/nut-ng/outputs/nutproto"
-	"github.com/nut-ng/nut-ng/outputs/prometheus"
-	"github.com/nut-ng/nut-ng/outputs/rest"
-	"github.com/nut-ng/nut-ng/outputs/snmp"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/internal/config"
+	"github.com/duskglow/currently/internal/core"
+	"github.com/duskglow/currently/internal/plugins"
+	"github.com/duskglow/currently/internal/policy"
+	"github.com/duskglow/currently/internal/registry"
+	"github.com/duskglow/currently/outputs/nutproto"
+	"github.com/duskglow/currently/outputs/prometheus"
+	"github.com/duskglow/currently/outputs/rest"
+	"github.com/duskglow/currently/outputs/snmp"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // Options for Run.
@@ -42,7 +42,7 @@ type Options struct {
 	Registry *registry.Registry
 	Log      *slog.Logger
 	Version  string
-	// Ready, if set, is called with the control socket path once nutng is
+	// Ready, if set, is called with the control socket path once Currently is
 	// serving.
 	Ready func(controlPath string)
 	// Executor replaces the one that really runs shutdown commands (tests).
@@ -89,13 +89,13 @@ func Run(ctx context.Context, o Options) error {
 	}
 	defer closeAll()
 	if cfg.Listen.HTTP != "" {
-		if httpLn, err = listenTCP(cfg.Listen.HTTP, "the REST API", "listen.http", "another nutng"); err != nil {
+		if httpLn, err = listenTCP(cfg.Listen.HTTP, "the REST API", "listen.http", "another Currently"); err != nil {
 			return err
 		}
 	}
 	separateMetrics := cfg.Listen.Metrics != "" && !strings.EqualFold(cfg.Listen.Metrics, "off")
 	if separateMetrics {
-		if metricsLn, err = listenTCP(cfg.Listen.Metrics, "Prometheus metrics", "listen.metrics", "another nutng"); err != nil {
+		if metricsLn, err = listenTCP(cfg.Listen.Metrics, "Prometheus metrics", "listen.metrics", "another Currently"); err != nil {
 			return err
 		}
 	}
@@ -108,7 +108,7 @@ func Run(ctx context.Context, o Options) error {
 		nutTLS = &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
 	}
 	if cfg.Listen.NUT != "" {
-		if nutLn, err = listenTCP(cfg.Listen.NUT, "the NUT protocol", "listen.nut", "NUT's upsd or another nutng"); err != nil {
+		if nutLn, err = listenTCP(cfg.Listen.NUT, "the NUT protocol", "listen.nut", "NUT's upsd or another Currently"); err != nil {
 			return err
 		}
 	}
@@ -200,27 +200,27 @@ func Run(ctx context.Context, o Options) error {
 		g.Go(func() error { superviseOutput(ctx, out, host, oc.Options, olog); return nil })
 	}
 	if cfg.Shutdown == nil {
-		log.Info("no shutdown policy: nutng will not shut this computer down (add a shutdown section to nutng.yaml)")
+		log.Info("no shutdown policy: Currently will not shut this computer down (add a shutdown section to currently.yaml)")
 	} else if why := policy.BuiltinBlocked(); why != "" && cfg.Shutdown.Command == "" {
 		log.Warn("the operating system shutdown command is blocked: " + why)
 	}
 
-	log.Info("nutng started", "version", o.Version, "config", orNone(cfg.Path),
+	log.Info("Currently started", "version", o.Version, "config", orNone(cfg.Path),
 		"ups", len(cfg.UPS), "control", ctlPath)
 	if len(cfg.UPS) == 0 {
 		log.Warn("no UPS configured; add one to " + config.DefaultPath() +
-			", or run `nutng serve --demo` to try nutng with a simulated UPS")
+			", or run `currently serve --demo` to try Currently with a simulated UPS")
 	}
 	if o.Ready != nil {
 		o.Ready(ctlPath)
 	}
 	err = g.Wait()
-	log.Info("nutng stopped")
+	log.Info("Currently stopped")
 	return err
 }
 
 // superviseOutput runs an output until ctx ends, restarting it with
-// backoff when it fails. A failing output never stops nutng.
+// backoff when it fails. A failing output never stops Currently.
 func superviseOutput(ctx context.Context, out sdk.Output, host sdk.Host, cfg sdk.Config, log *slog.Logger) {
 	backoff := time.Second
 	for {
@@ -264,7 +264,7 @@ func listenControl(path string) (net.Listener, string, error) {
 	return nil, "", fmt.Errorf("cannot create the control socket: %w", errors.Join(errs...))
 }
 
-var errInUse = errors.New("another nutng daemon is already running")
+var errInUse = errors.New("another Currently daemon is already running")
 
 func listenUnix(path string) (net.Listener, error) {
 	if len(path) > config.MaxSocketPath() {
@@ -289,10 +289,10 @@ func listenUnix(path string) (net.Listener, error) {
 		return nil, err
 	}
 	if runtime.GOOS != "windows" {
-		// Owner and group may use the CLI. When a nutng group exists, its
+		// Owner and group may use the CLI. When a Currently group exists, its
 		// members can control the daemon without root.
 		_ = os.Chmod(path, 0o660)
-		if g, err := user.LookupGroup("nutng"); err == nil {
+		if g, err := user.LookupGroup("currently"); err == nil {
 			if gid, err := strconv.Atoi(g.Gid); err == nil {
 				_ = os.Chown(path, -1, gid)
 			}
@@ -332,7 +332,7 @@ func listenUDP(addr string) (net.PacketConn, error) {
 	if err == nil {
 		return pc, nil
 	}
-	hint := "is snmpd or another nutng using it? Choose another port with listen.snmp.addr"
+	hint := "is snmpd or another Currently using it? Choose another port with listen.snmp.addr"
 	if errors.Is(err, os.ErrPermission) || errors.Is(err, syscall.EACCES) {
 		hint = "ports below 1024 need root (on Linux, or the CAP_NET_BIND_SERVICE capability); use a port such as 1161"
 	}
@@ -346,7 +346,7 @@ func listenTCP(addr, what, key, usual string) (net.Listener, error) {
 	}
 	if isAddrInUse(err) {
 		return nil, fmt.Errorf("cannot serve %s on %s: the port is already in use. Is %s running? "+
-			"Stop it, or set %s in nutng.yaml to another address or \"off\"", what, addr, usual, key)
+			"Stop it, or set %s in currently.yaml to another address or \"off\"", what, addr, usual, key)
 	}
 	return nil, fmt.Errorf("cannot serve %s on %s (%s): %w", what, addr, key, err)
 }

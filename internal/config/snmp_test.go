@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nut-ng/nut-ng/internal/registry"
+	"github.com/duskglow/currently/internal/registry"
 )
 
 func TestSNMPConfig(t *testing.T) {
-	t.Setenv("NUTNG_TEST_SNMP_PRIV", "privpassword")
+	t.Setenv("CURRENTLY_TEST_SNMP_PRIV", "privpassword")
 	src := `
 ups:
   rack: {driver: simulator}
@@ -21,13 +21,13 @@ listen:
         auth: SHA-256
         auth_password: authpassword
         privacy: aes128
-        privacy_password_env: NUTNG_TEST_SNMP_PRIV
+        privacy_password_env: CURRENTLY_TEST_SNMP_PRIV
     traps:
       - target: 192.0.2.1
       - target: "[2001:db8::1]:1162"
         community: traps
 `
-	c, err := Parse("nutng.yaml", []byte(src))
+	c, err := Parse("currently.yaml", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ listen:
 		"listen:\n  snmp: off\n":                 "",
 		"listen:\n  http: off\n  metrics: off\n": "",
 	} {
-		c, err := Parse("nutng.yaml", []byte(src))
+		c, err := Parse("currently.yaml", []byte(src))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -77,8 +77,8 @@ func TestSNMPConfigErrors(t *testing.T) {
 		name, src string
 		want      []string
 	}{
-		{"key typo", "listen:\n  snmp:\n    comunity: x\n", []string{"nutng.yaml:3:", `did you mean "community"`}},
-		{"user key typo", user("        auth_pasword: x\n"), []string{"nutng.yaml:5:", `did you mean "auth_password"`}},
+		{"key typo", "listen:\n  snmp:\n    comunity: x\n", []string{"currently.yaml:3:", `did you mean "community"`}},
+		{"user key typo", user("        auth_pasword: x\n"), []string{"currently.yaml:5:", `did you mean "auth_password"`}},
 		{"bad addr", "listen:\n  snmp: 1161\n", []string{"listen.snmp.addr"}},
 		{"unknown ups", "listen:\n  snmp:\n    ups: nope\n", []string{"listen.snmp.ups", `"nope"`}},
 		{"bad auth", user("        auth: sha3\n        auth_password: authpassword\n"), []string{"auth \"sha3\" is not one of"}},
@@ -93,7 +93,7 @@ func TestSNMPConfigErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := Parse("nutng.yaml", []byte(tt.src))
+			c, err := Parse("currently.yaml", []byte(tt.src))
 			if err == nil {
 				err = c.Validate(registry.Builtin())
 			}

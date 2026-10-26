@@ -9,15 +9,15 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	nutngv1 "github.com/nut-ng/nut-ng/gen/nutng/v1"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	currentlyv1 "github.com/duskglow/currently/gen/currently/v1"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // HostClient is the sdk.Host an output plugin receives: calls go back to
-// nutng over gRPC.
+// Currently over gRPC.
 type HostClient struct {
 	conn *grpc.ClientConn
-	c    nutngv1.HostServiceClient
+	c    currentlyv1.HostServiceClient
 	log  *slog.Logger
 }
 
@@ -32,17 +32,17 @@ func (b bearer) GetRequestMetadata(context.Context, ...string) (map[string]strin
 // The connection is to 127.0.0.1 only, so plaintext is acceptable.
 func (bearer) RequireTransportSecurity() bool { return false }
 
-// DialHost connects to the HostService nutng serves for this plugin.
+// DialHost connects to the HostService Currently serves for this plugin.
 func DialHost(_ context.Context, addr, token string) (*HostClient, error) {
 	if addr == "" {
-		return nil, fmt.Errorf("nutng did not say where its HostService is; upgrade nutng")
+		return nil, fmt.Errorf("the host did not say where its HostService is; upgrade Currently")
 	}
 	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithPerRPCCredentials(bearer(token)))
 	if err != nil {
 		return nil, err
 	}
-	return &HostClient{conn: conn, c: nutngv1.NewHostServiceClient(conn), log: Logger()}, nil
+	return &HostClient{conn: conn, c: currentlyv1.NewHostServiceClient(conn), log: Logger()}, nil
 }
 
 // Close closes the connection.
@@ -50,7 +50,7 @@ func (h *HostClient) Close() error { return h.conn.Close() }
 
 // ListUPS implements sdk.Host. Errors are logged and give an empty list.
 func (h *HostClient) ListUPS() []sdk.UPS {
-	resp, err := h.c.ListUPS(context.Background(), &nutngv1.ListUPSRequest{})
+	resp, err := h.c.ListUPS(context.Background(), &currentlyv1.ListUPSRequest{})
 	if err != nil {
 		h.log.Warn("ListUPS failed", "error", err)
 		return nil
@@ -64,7 +64,7 @@ func (h *HostClient) ListUPS() []sdk.UPS {
 
 // GetUPS implements sdk.Host.
 func (h *HostClient) GetUPS(name string) (sdk.UPS, bool) {
-	resp, err := h.c.GetUPS(context.Background(), &nutngv1.GetUPSRequest{Name: name})
+	resp, err := h.c.GetUPS(context.Background(), &currentlyv1.GetUPSRequest{Name: name})
 	if err != nil {
 		return sdk.UPS{}, false
 	}
@@ -73,7 +73,7 @@ func (h *HostClient) GetUPS(name string) (sdk.UPS, bool) {
 
 // History implements sdk.Host.
 func (h *HostClient) History(ups, variable string) ([]sdk.Sample, error) {
-	resp, err := h.c.GetHistory(context.Background(), &nutngv1.GetHistoryRequest{Ups: ups, Variable: variable})
+	resp, err := h.c.GetHistory(context.Background(), &currentlyv1.GetHistoryRequest{Ups: ups, Variable: variable})
 	if err != nil {
 		return nil, StatusToErr(err)
 	}
@@ -86,7 +86,7 @@ func (h *HostClient) History(ups, variable string) ([]sdk.Sample, error) {
 
 // RecentEvents implements sdk.Host.
 func (h *HostClient) RecentEvents(n int) []sdk.Event {
-	resp, err := h.c.GetRecentEvents(context.Background(), &nutngv1.GetRecentEventsRequest{Limit: uint32(max(n, 0))})
+	resp, err := h.c.GetRecentEvents(context.Background(), &currentlyv1.GetRecentEventsRequest{Limit: uint32(max(n, 0))})
 	if err != nil {
 		h.log.Warn("GetRecentEvents failed", "error", err)
 		return nil
@@ -99,12 +99,12 @@ func (h *HostClient) RecentEvents(n int) []sdk.Event {
 }
 
 // Subscribe implements sdk.Host. The channel closes when ctx ends or the
-// connection to nutng is lost.
+// connection to Currently is lost.
 func (h *HostClient) Subscribe(ctx context.Context, buffer int) <-chan sdk.Event {
 	ch := make(chan sdk.Event, max(buffer, 1))
 	go func() {
 		defer close(ch)
-		stream, err := h.c.SubscribeEvents(ctx, &nutngv1.SubscribeEventsRequest{})
+		stream, err := h.c.SubscribeEvents(ctx, &currentlyv1.SubscribeEventsRequest{})
 		if err != nil {
 			h.log.Warn("SubscribeEvents failed", "error", err)
 			return
@@ -113,7 +113,7 @@ func (h *HostClient) Subscribe(ctx context.Context, buffer int) <-chan sdk.Event
 			resp, err := stream.Recv()
 			if err != nil {
 				if err != io.EOF && ctx.Err() == nil {
-					h.log.Warn("event stream from nutng ended", "error", err)
+					h.log.Warn("event stream from Currently ended", "error", err)
 				}
 				return
 			}
@@ -128,18 +128,18 @@ func (h *HostClient) Subscribe(ctx context.Context, buffer int) <-chan sdk.Event
 
 // RunCommand implements sdk.Host.
 func (h *HostClient) RunCommand(ctx context.Context, ups, command, param string) error {
-	_, err := h.c.RunUPSCommand(ctx, &nutngv1.RunUPSCommandRequest{Ups: ups, Command: command, Param: param})
+	_, err := h.c.RunUPSCommand(ctx, &currentlyv1.RunUPSCommandRequest{Ups: ups, Command: command, Param: param})
 	return StatusToErr(err)
 }
 
 // SetVar implements sdk.Host.
 func (h *HostClient) SetVar(ctx context.Context, ups, variable, value string) error {
-	_, err := h.c.SetUPSVar(ctx, &nutngv1.SetUPSVarRequest{Ups: ups, Variable: variable, Value: value})
+	_, err := h.c.SetUPSVar(ctx, &currentlyv1.SetUPSVarRequest{Ups: ups, Variable: variable, Value: value})
 	return StatusToErr(err)
 }
 
 // SetForcedShutdown implements sdk.Host.
 func (h *HostClient) SetForcedShutdown(ctx context.Context, ups string) error {
-	_, err := h.c.SetUPSForcedShutdown(ctx, &nutngv1.SetUPSForcedShutdownRequest{Ups: ups})
+	_, err := h.c.SetUPSForcedShutdown(ctx, &currentlyv1.SetUPSForcedShutdownRequest{Ups: ups})
 	return StatusToErr(err)
 }

@@ -1,9 +1,9 @@
-// Package sdk defines the contracts between the nut-ng core and the plugins
+// Package sdk defines the contracts between the Currently core and the plugins
 // that feed it data (drivers) or publish it (outputs).
 //
 // Built-in drivers and outputs implement these interfaces directly and run
-// inside the nutng process. External plugins implement the same contracts
-// over gRPC (see proto/nutng/v1), and the core adapts them to these
+// inside the Currently process. External plugins implement the same contracts
+// over gRPC (see proto/currently/v1), and the core adapts them to these
 // interfaces, so built-in and external plugins are treated alike.
 //
 // Variable names and status flags follow Network UPS Tools conventions
@@ -14,7 +14,7 @@ package sdk
 import "errors"
 
 // ProtocolVersion is the version of the plugin contract. It changes only
-// when the contract changes incompatibly, independent of the nutng release.
+// when the contract changes incompatibly, independent of the Currently release.
 const ProtocolVersion = 1
 
 // Errors returned by drivers and by the core. Wrap them with fmt.Errorf("%w")

@@ -1,9 +1,9 @@
-module nutng-{{.Kind}}-{{.Name}}
+module currently-{{.Kind}}-{{.Name}}
 
 go 1.26
 
-require github.com/nut-ng/nut-ng {{.NutngVersion}}
+require github.com/duskglow/currently {{.CurrentlyVersion}}
 {{if .SDKPath}}
-// Build against a local nut-ng checkout.
-replace github.com/nut-ng/nut-ng => {{printf "%q" .SDKPath}}
+// Build against a local Currently checkout.
+replace github.com/duskglow/currently => {{printf "%q" .SDKPath}}
 {{end}}

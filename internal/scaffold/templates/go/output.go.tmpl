@@ -1,7 +1,7 @@
-// Command nutng-output-{{.Name}} is a nutng output plugin.
+// Command currently-output-{{.Name}} is a Currently output plugin.
 //
-// Build it, put the executable in a nutng plugin directory (see
-// `nutng plugin list`), and use it in nutng.yaml:
+// Build it, put the executable in a Currently plugin directory (see
+// `currently plugin list`), and use it in currently.yaml:
 //
 //	outputs:
 //	  {{.Name}}:
@@ -13,8 +13,8 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/nut-ng/nut-ng/pkg/plugin"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/plugin"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 type output struct{}
@@ -38,7 +38,7 @@ func (output) ValidateConfig(cfg sdk.Config) error {
 	return nil
 }
 
-// Run sends UPS data until ctx ends. Returning an error makes nutng start
+// Run sends UPS data until ctx ends. Returning an error makes Currently start
 // it again with backoff. host.RunCommand works only with allow_control.
 func (output) Run(ctx context.Context, host sdk.Host, cfg sdk.Config, log *slog.Logger) error {
 	var o options
@@ -55,7 +55,7 @@ func (output) Run(ctx context.Context, host sdk.Host, cfg sdk.Config, log *slog.
 			return nil
 		case e, ok := <-events:
 			if !ok {
-				return errors.New("lost the connection to nutng")
+				return errors.New("lost the connection to currently")
 			}
 			if e.Type.Notable() {
 				// TODO: send it to o.Target.

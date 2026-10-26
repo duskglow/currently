@@ -1,8 +1,8 @@
-# Builds the nut-ng MSI with the WiX Toolset.
+# Builds the Currently MSI with the WiX Toolset.
 #
-#   packaging\windows\build-msi.ps1 -Version 1.2.3 -BinDir dist\nutng_windows_amd64_v1 -Out dist\nutng_1.2.3_windows_amd64.msi
+#   packaging\windows\build-msi.ps1 -Version 1.2.3 -BinDir dist\currently_windows_amd64_v1 -Out dist\currently_1.2.3_windows_amd64.msi
 #
-# BinDir holds nutng.exe and plugins\nutng-output-mqtt.exe. Needs the .NET
+# BinDir holds currently.exe and plugins\currently-output-mqtt.exe. Needs the .NET
 # SDK; the WiX tool is installed into a local folder if it is missing.
 param(
     [Parameter(Mandatory)] [string] $Version,
@@ -14,7 +14,7 @@ $ErrorActionPreference = "Stop"
 $WixVersion = "5.0.2"
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $src = Resolve-Path (Join-Path $here "..\..")
-$tools = Join-Path $env:TEMP "nutng-wix-$WixVersion"
+$tools = Join-Path $env:TEMP "currently-wix-$WixVersion"
 
 $wix = Join-Path $tools "wix.exe"
 if (-not (Test-Path $wix)) {
@@ -33,7 +33,7 @@ try {
     $msiVersion = ($Version -replace '^v', '') -replace '[-+].*$', ''
     & $wix build -arch $Arch -ext WixToolset.Util.wixext `
         -d "Version=$msiVersion" -d "BinDir=$bin" -d "SrcDir=$src" `
-        -o $outPath (Join-Path $here "nutng.wxs") | Out-Host
+        -o $outPath (Join-Path $here "currently.wxs") | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "wix build failed" }
 } finally {
     Pop-Location

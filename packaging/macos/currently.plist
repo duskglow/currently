@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd job for Currently, the same one `sudo currently service install` writes.
+  Copy it to /Library/LaunchDaemons/currently.plist (owner root:wheel, mode
+  644), then: sudo launchctl bootstrap system /Library/LaunchDaemons/currently.plist
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>currently</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/bin/currently</string>
+		<string>serve</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>5</integer>
+	<key>StandardOutPath</key>
+	<string>/var/log/currently.log</string>
+	<key>StandardErrorPath</key>
+	<string>/var/log/currently.log</string>
+</dict>
+</plist>

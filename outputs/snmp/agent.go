@@ -1,6 +1,6 @@
 // Package snmp is a read-only SNMP agent (v1, v2c and v3 with USM) that
 // serves the UPS-MIB (RFC 1628), so LibreNMS, PRTG, Zabbix, Observium and
-// other network monitors can poll nutng like a UPS network card.
+// other network monitors can poll Currently like a UPS network card.
 //
 // Each UPS is a separate UPS-MIB view: SNMPv3 selects it with the context
 // name, and v1/v2c with a community of the form "community@ups". Without
@@ -24,7 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // Options configure the agent.
@@ -161,7 +161,7 @@ func New(host sdk.Host, opts Options) (*Agent, error) {
 // format 5, enterprise 0).
 func DefaultEngineID() []byte {
 	h, _ := os.Hostname()
-	sum := sha256.Sum256([]byte("nutng snmp engine " + h))
+	sum := sha256.Sum256([]byte("Currently snmp engine " + h))
 	return append([]byte{0x80, 0, 0, 0, 5}, sum[:8]...)
 }
 
@@ -297,7 +297,7 @@ func (a *Agent) tree(ups string) []VarBind {
 	var vbs []VarBind
 	host, _ := os.Hostname()
 	sys := func(arc uint32, v Value) { vbs = append(vbs, VarBind{oidSystem.Append(arc, 0), v}) }
-	sys(1, stringValue(fmt.Sprintf("nut-ng %s UPS monitor (%s/%s)", a.opts.Version, runtime.GOOS, runtime.GOARCH)))
+	sys(1, stringValue(fmt.Sprintf("Currently %s UPS monitor (%s/%s)", a.opts.Version, runtime.GOOS, runtime.GOARCH)))
 	sys(2, oidValue(oidUPSMIB))
 	sys(3, ticksValue(a.uptime(now)))
 	sys(4, stringValue(a.opts.Contact))

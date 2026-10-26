@@ -1,4 +1,4 @@
-// Package svcmgr installs and controls nutng as a system service: systemd,
+// Package svcmgr installs and controls Currently as a system service: systemd,
 // OpenRC or SysV init on Linux, launchd on macOS, rc.d on FreeBSD, and the
 // Service Control Manager on Windows.
 package svcmgr
@@ -20,11 +20,11 @@ import (
 )
 
 // Name is the service name.
-const Name = "nutng"
+const Name = "currently"
 
 // systemdUnit replaces the library's default unit: restart after 5 seconds
 // rather than 2 minutes (a UPS monitor should not stay down), start after
-// the network so the API can bind, and read secrets from /etc/default/nutng.
+// the network so the API can bind, and read secrets from /etc/default/currently.
 const systemdUnit = `[Unit]
 Description={{Description}}
 ConditionFileIsExecutable={{Path | cmdEscape}}
@@ -36,19 +36,19 @@ ExecStart={{Path | cmdEscape}}{{range Arguments}} {{. | cmd}}{{end}}
 {{if UserName}}User={{UserName}}
 {{end}}Restart=always
 RestartSec=5
-EnvironmentFile=-/etc/default/nutng
+EnvironmentFile=-/etc/default/currently
 
 [Install]
 WantedBy=multi-user.target
 `
 
-// Config returns the service definition. args are passed to the nutng
-// executable, for example ["serve", "--config", "/etc/nutng/nutng.yaml"].
+// Config returns the service definition. args are passed to the Currently
+// executable, for example ["serve", "--config", "/etc/currently/currently.yaml"].
 func Config(args []string, user string) *service.Config {
 	return &service.Config{
 		Name:        Name,
-		DisplayName: "nut-ng UPS monitor",
-		Description: "Monitors UPSes and serves their state to monitoring tools (nut-ng)",
+		DisplayName: "Currently UPS monitor",
+		Description: "Monitors UPSes and serves their state to monitoring tools (Currently)",
 		Arguments:   args,
 		UserName:    user,
 		Option: service.KeyValue{
@@ -106,7 +106,7 @@ func Status() (State, error) {
 // Platform names the service manager in use, for messages.
 func Platform() string { return service.Platform() }
 
-// Interactive reports whether nutng runs from a terminal rather than under
+// Interactive reports whether Currently runs from a terminal rather than under
 // a service manager.
 func Interactive() bool { return service.Interactive() }
 
@@ -114,12 +114,12 @@ func Interactive() bool { return service.Interactive() }
 func LogHint() string {
 	switch runtime.GOOS {
 	case "windows":
-		return "Event Viewer → Windows Logs → Application, source \"nutng\""
+		return "Event Viewer → Windows Logs → Application, source \"currently\""
 	case "darwin":
-		return "`log show --predicate 'process == \"nutng\"'`"
+		return "`log show --predicate 'process == \"currently\"'`"
 	}
 	if strings.Contains(service.Platform(), "systemd") {
-		return "`journalctl -u nutng`"
+		return "`journalctl -u currently`"
 	}
 	return "the system log (syslog)"
 }
@@ -180,7 +180,7 @@ func (p *program) Start(service.Service) error {
 	go func() {
 		defer close(p.done)
 		if err := p.fn(ctx); err != nil && ctx.Err() == nil {
-			p.log.Error("nutng failed", "error", err)
+			p.log.Error("Currently failed", "error", err)
 			os.Exit(1)
 		}
 	}()
@@ -192,7 +192,7 @@ func (p *program) Stop(service.Service) error {
 	select {
 	case <-p.done:
 	case <-time.After(15 * time.Second):
-		p.log.Warn("nutng did not stop within 15s")
+		p.log.Warn("Currently did not stop within 15s")
 	}
 	return nil
 }
@@ -206,7 +206,7 @@ type EventLogHandler struct {
 	mu     *sync.Mutex
 }
 
-// NewEventLogHandler returns a handler writing to the nutng service log.
+// NewEventLogHandler returns a handler writing to the Currently service log.
 func NewEventLogHandler(opts *slog.HandlerOptions) (*EventLogHandler, error) {
 	s, err := service.New(noop{}, Config(nil, ""))
 	if err != nil {

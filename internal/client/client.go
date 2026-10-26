@@ -1,4 +1,4 @@
-// Package client talks to a running nutng daemon, over its local control
+// Package client talks to a running Currently daemon, over its local control
 // socket or over HTTP.
 package client
 
@@ -19,11 +19,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nut-ng/nut-ng/internal/policy"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/internal/policy"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
-// Client is a nutng API client.
+// Client is a Currently API client.
 type Client struct {
 	base  string
 	where string // for error messages
@@ -74,7 +74,7 @@ func NewSocket(path string) *Client {
 			return d.DialContext(ctx, "unix", path)
 		},
 	}
-	return &Client{base: "http://nutng", where: "control socket " + path, http: &http.Client{Transport: tr}}
+	return &Client{base: "http://currently", where: "control socket " + path, http: &http.Client{Transport: tr}}
 }
 
 // NewURL returns a client for a daemon's HTTP address, such as
@@ -168,7 +168,7 @@ func (c *Client) Events(ctx context.Context, ups string, recent int, fn func(sdk
 	if err := sc.Err(); err != nil {
 		return c.connError(err)
 	}
-	return fmt.Errorf("the nutng daemon closed the event stream")
+	return fmt.Errorf("the Currently daemon closed the event stream")
 }
 
 func (c *Client) request(ctx context.Context, method, path string, body any) (*http.Request, error) {
@@ -218,19 +218,19 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 }
 
 // ErrNotRunning means the daemon could not be reached.
-var ErrNotRunning = errors.New("nutng daemon is not reachable")
+var ErrNotRunning = errors.New("the Currently daemon is not reachable")
 
 func (c *Client) connError(err error) error {
 	if errors.Is(err, context.Canceled) {
 		return err
 	}
 	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ECONNREFUSED) || isNoSocket(err) {
-		return fmt.Errorf("%w at %s: is it running? Start it with `nutng serve` (or `nutng serve --demo` to try a simulated UPS)", ErrNotRunning, c.where)
+		return fmt.Errorf("%w at %s: is it running? Start it with `currently serve` (or `currently serve --demo` to try a simulated UPS)", ErrNotRunning, c.where)
 	}
 	if errors.Is(err, os.ErrPermission) {
-		return fmt.Errorf("permission denied on %s: run as root/Administrator or as a member of the nutng group", c.where)
+		return fmt.Errorf("permission denied on %s: run as root/Administrator or as a member of the currently group", c.where)
 	}
-	return fmt.Errorf("cannot reach nutng at %s: %w", c.where, err)
+	return fmt.Errorf("cannot reach Currently at %s: %w", c.where, err)
 }
 
 // isNoSocket catches the Windows errors for a missing or dead AF_UNIX

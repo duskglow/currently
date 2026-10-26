@@ -1,6 +1,6 @@
-site_name: nut-ng
+site_name: Currently
 site_description: Easy UPS monitoring and safe shutdown, queryable by your monitoring tools
-repo_url: https://github.com/nut-ng/nut-ng
+repo_url: https://github.com/duskglow/currently
 edit_uri: edit/main/docs/
 theme:
   name: material

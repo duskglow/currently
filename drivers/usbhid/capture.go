@@ -14,22 +14,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nut-ng/nut-ng/drivers/usbhid/hid"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/drivers/usbhid/hid"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // CaptureFormat identifies capture files.
-const CaptureFormat = "nutng-hid-capture/1"
+const CaptureFormat = "currently-hid-capture/1"
 
 // Capture is a recording of a UPS: its fields and a series of raw reads.
 // Captures make bug reports and new quirk files possible without the
 // hardware, and the replay driver plays them back.
 type Capture struct {
-	Format       string     `json:"format"`
-	Captured     time.Time  `json:"captured"`
-	NutngVersion string     `json:"nutng_version"`
-	OS           string     `json:"os"`
-	Device       DeviceInfo `json:"device"`
+	Format           string     `json:"format"`
+	Captured         time.Time  `json:"captured"`
+	CurrentlyVersion string     `json:"currently_version"`
+	OS               string     `json:"os"`
+	Device           DeviceInfo `json:"device"`
 	// ReportDescriptor is the raw descriptor in hex, when the platform
 	// exposes it (not on Windows).
 	ReportDescriptor string         `json:"report_descriptor,omitempty"`
@@ -54,8 +54,8 @@ type CaptureOptions struct {
 	Interval time.Duration
 	// KeepSerial keeps the serial number; by default it is replaced so
 	// captures can be shared.
-	KeepSerial   bool
-	NutngVersion string
+	KeepSerial       bool
+	CurrentlyVersion string
 	// Progress, if set, is called after each sample with the mapped
 	// variables.
 	Progress func(n int, vars map[string]string)
@@ -82,7 +82,7 @@ func (d *Driver) CaptureDevice(ctx context.Context, o CaptureOptions) (*Capture,
 	m := NewMapper(info, dev.Fields(), SelectQuirks(quirks, info.VendorID))
 
 	c := &Capture{
-		Format: CaptureFormat, Captured: time.Now().UTC(), NutngVersion: o.NutngVersion,
+		Format: CaptureFormat, Captured: time.Now().UTC(), CurrentlyVersion: o.CurrentlyVersion,
 		OS: runtime.GOOS + "/" + runtime.GOARCH, Device: info, Fields: dev.Fields(), Strings: map[int]string{},
 		Unmapped: m.Unmapped(dev.Fields()),
 	}
@@ -142,7 +142,7 @@ func ReadCapture(path string) (*Capture, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	if c.Format != CaptureFormat {
-		return nil, fmt.Errorf("%s: not a nutng HID capture (format %q, want %q)", path, c.Format, CaptureFormat)
+		return nil, fmt.Errorf("%s: not a Currently HID capture (format %q, want %q)", path, c.Format, CaptureFormat)
 	}
 	if len(c.Samples) == 0 {
 		return nil, fmt.Errorf("%s: capture has no samples", path)
@@ -173,7 +173,7 @@ func parseReplayOptions(cfg sdk.Config) (replayOptions, error) {
 		return o, err
 	}
 	if o.File == "" {
-		return o, errors.New("file is required: the capture to replay (from `nutng debug capture`)")
+		return o, errors.New("file is required: the capture to replay (from `currently debug capture`)")
 	}
 	if o.Interval < 100*time.Millisecond {
 		return o, errors.New("interval must be at least 100ms")
@@ -184,7 +184,7 @@ func parseReplayOptions(cfg sdk.Config) (replayOptions, error) {
 // Info implements sdk.Driver.
 func (*ReplayDriver) Info() sdk.Info {
 	return sdk.Info{Name: ReplayDriverName, Kind: sdk.KindDriver, Version: Version,
-		Description: "Plays back a USB UPS capture made with `nutng debug capture`"}
+		Description: "Plays back a USB UPS capture made with `currently debug capture`"}
 }
 
 // Discover implements sdk.Driver.

@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nut-ng/nut-ng/drivers/simulator"
-	"github.com/nut-ng/nut-ng/internal/core"
-	"github.com/nut-ng/nut-ng/internal/registry"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/drivers/simulator"
+	"github.com/duskglow/currently/internal/core"
+	"github.com/duskglow/currently/internal/registry"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -25,7 +25,7 @@ var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
 var pluginDir string
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "nutng-plugins")
+	dir, err := os.MkdirTemp("", "currently-plugins")
 	if err != nil {
 		panic(err)
 	}
@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 		exe = ".exe"
 	}
 	gobin := filepath.Join(runtime.GOROOT(), "bin", "go") //nolint:staticcheck // the go running the tests, even when it is not on PATH
-	for kind, name := range map[string]string{"driver": "nutng-driver-testdriver", "output": "nutng-output-testoutput"} {
+	for kind, name := range map[string]string{"driver": "currently-driver-testdriver", "output": "currently-output-testoutput"} {
 		cmd := exec.Command(gobin, "build", "-o", filepath.Join(dir, name+exe), "./testdata/"+kind)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			os.Stderr.Write(out)
@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 	}
 	// Files that must be ignored: wrong name, and a directory.
 	_ = os.WriteFile(filepath.Join(dir, "README.txt"), []byte("not a plugin"), 0o644)
-	_ = os.Mkdir(filepath.Join(dir, "nutng-driver-dir"+exe), 0o755)
+	_ = os.Mkdir(filepath.Join(dir, "currently-driver-dir"+exe), 0o755)
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)
@@ -156,7 +156,7 @@ func TestDriverPluginAndRestart(t *testing.T) {
 		t.Errorf("invalid value crossed the wire as %v", err)
 	}
 
-	// The plugin exits after a second; nutng must start it again.
+	// The plugin exits after a second; Currently must start it again.
 	waitFor(t, "a restarted plugin", func() bool {
 		u, _ := c.GetUPS("plug")
 		pid := u.Value("driver.pid")

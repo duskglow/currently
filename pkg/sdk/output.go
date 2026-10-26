@@ -41,7 +41,7 @@ type Host interface {
 	SetVar(ctx context.Context, ups, variable, value string) error
 	// SetForcedShutdown adds the FSD flag to a UPS's status, telling every
 	// monitoring client to shut down. As in NUT, the flag stays set until
-	// nutng restarts.
+	// Currently restarts.
 	SetForcedShutdown(ctx context.Context, ups string) error
 }
 

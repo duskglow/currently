@@ -1,0 +1,22 @@
+#!/sbin/openrc-run
+# OpenRC service for Currently (Alpine and other OpenRC systems).
+
+name="currently"
+description="Currently UPS monitor"
+command="/usr/bin/currently"
+command_args="serve"
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="/var/log/currently.log"
+error_log="/var/log/currently.log"
+supervisor=supervise-daemon
+respawn_delay=5
+respawn_max=0
+
+# Secrets for *_env settings in currently.yaml.
+[ -r /etc/default/currently ] && . /etc/default/currently && export $(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' /etc/default/currently | cut -d= -f1)
+
+depend() {
+	need net
+	after firewall
+}

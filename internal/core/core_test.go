@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 func types(events []sdk.Event) []sdk.EventType {

@@ -1,6 +1,6 @@
 # Shutting down
 
-nutng shuts this computer down when its UPS is about to run out, as NUT's
+Currently shuts this computer down when its UPS is about to run out, as NUT's
 upsmon does. Without a `shutdown` section it only monitors.
 
 ```yaml
@@ -14,24 +14,24 @@ shutdown:
 ```
 
 ```sh
-nutng test shutdown   # the policy, how each UPS looks to it now, and every step (does nothing)
+currently test shutdown   # the policy, how each UPS looks to it now, and every step (does nothing)
 ```
 
 ## Primary and secondaries
 
 The computer the UPS is plugged into is its **primary**. Other computers
 powered by the same UPS follow it as **secondaries**, either with NUT's
-upsmon or with nutng's `nut` driver (which also follows NUT's own upsd):
+upsmon or with Currently's `nut` driver (which also follows NUT's own upsd):
 
 ```yaml
 # on a secondary
 ups:
   rack:
     driver: nut
-    host: 192.168.1.10       # the primary (nutng or NUT upsd)
+    host: 192.168.1.10       # the primary (currently or NUT upsd)
     ups: rack
     username: mon            # a secondary user there, so the primary waits for us
-    password_env: NUTNG_MON_PASSWORD
+    password_env: CURRENTLY_MON_PASSWORD
 shutdown: {}                 # follow the primary's FSD, or low battery
 ```
 
@@ -41,7 +41,7 @@ On the primary, give each secondary a user:
 listen:
   nut: ":3493"
 users:
-  mon: {password_env: NUTNG_MON_PASSWORD, role: secondary}
+  mon: {password_env: CURRENTLY_MON_PASSWORD, role: secondary}
 ```
 
 When the primary decides to shut down, it:
@@ -62,15 +62,15 @@ A computer powered by several UPSes lists them in `shutdown.ups` and sets
 
 ## Testing it safely
 
-- `nutng test shutdown` prints the whole sequence and does nothing.
+- `currently test shutdown` prints the whole sequence and does nothing.
 - `shutdown.dry_run: true` logs every step and does none of them.
 - A simulated UPS (`simulator`, `replay`) never shuts the computer down:
   its outages only act on simulated UPSes, unless you set a custom
-  `shutdown.command`. `nutng cmd demo sim.power.fail` starts an outage.
-- `NUTNG_NEVER_SHUTDOWN=1` in the environment blocks the operating
+  `shutdown.command`. `currently cmd demo sim.power.fail` starts an outage.
+- `CURRENTLY_NEVER_SHUTDOWN=1` in the environment blocks the operating
   system's shutdown command (a custom `shutdown.command` still runs, so
   point it at something harmless).
-- Every decision and step appears in `nutng watch`, the log, and
+- Every decision and step appears in `currently watch`, the log, and
   `GET /api/v1/shutdown`.
 
 !!! warning "Test `power_off_ups` on a spare UPS"

@@ -1,7 +1,7 @@
 // Package hidtest builds HID report descriptors and reports for tests.
 package hidtest
 
-import "github.com/nut-ng/nut-ng/drivers/usbhid/hid"
+import "github.com/duskglow/currently/drivers/usbhid/hid"
 
 // Builder writes report descriptor items.
 type Builder struct{ b []byte }

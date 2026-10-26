@@ -1,15 +1,15 @@
-// Command nutng-output-mqtt is the MQTT output plugin: it publishes UPS
+// Command currently-output-mqtt is the MQTT output plugin: it publishes UPS
 // state and events to an MQTT broker, with Home Assistant discovery, and
 // accepts commands over MQTT when the output has allow_control.
 //
-// Topics, with the default prefix "nutng":
+// Topics, with the default prefix "Currently":
 //
-//	nutng/status                    online/offline (this plugin; retained, last will)
-//	nutng/<ups>/available           online/offline (data from the UPS; retained)
-//	nutng/<ups>/state               JSON: status, state and every variable (retained)
-//	nutng/<ups>/event               JSON: each notable event
-//	nutng/<ups>/command/<command>   publish here to run a command; the payload is its parameter
-//	nutng/<ups>/command/result      JSON: the outcome of each command
+//	currently/status                    online/offline (this plugin; retained, last will)
+//	currently/<ups>/available           online/offline (data from the UPS; retained)
+//	currently/<ups>/state               JSON: status, state and every variable (retained)
+//	currently/<ups>/event               JSON: each notable event
+//	currently/<ups>/command/<command>   publish here to run a command; the payload is its parameter
+//	currently/<ups>/command/result      JSON: the outcome of each command
 package main
 
 import (
@@ -27,7 +27,7 @@ import (
 
 	paho "github.com/eclipse/paho.mqtt.golang"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // Version of the plugin.
@@ -64,8 +64,8 @@ var topicRE = regexp.MustCompile(`^[^#+]+$`)
 
 func parse(cfg sdk.Config) (Options, error) {
 	host, _ := os.Hostname()
-	o := Options{TopicPrefix: "nutng", QoS: 1, DiscoveryPrefix: "homeassistant", MinInterval: time.Second,
-		ClientID: "nutng-" + sanitize(host)}
+	o := Options{TopicPrefix: "currently", QoS: 1, DiscoveryPrefix: "homeassistant", MinInterval: time.Second,
+		ClientID: "currently-" + sanitize(host)}
 	if err := cfg.Decode(&o); err != nil {
 		return o, err
 	}
@@ -166,7 +166,7 @@ func (Output) Run(ctx context.Context, host sdk.Host, cfg sdk.Config, log *slog.
 			return nil
 		case e, ok := <-events:
 			if !ok {
-				return errors.New("lost the event stream from nutng")
+				return errors.New("lost the event stream from Currently")
 			}
 			p.handle(e)
 		case <-tick.C:
@@ -301,11 +301,11 @@ var sensors = map[string]sensor{
 func (p *publisher) discover(u sdk.UPS) {
 	name := sanitize(u.Name)
 	device := map[string]any{
-		"identifiers":  []string{"nutng_" + name},
+		"identifiers":  []string{"currently_" + name},
 		"name":         u.Name,
 		"manufacturer": firstNonEmpty(u.Value("device.mfr"), u.Value("ups.mfr")),
 		"model":        firstNonEmpty(u.Value("device.model"), u.Value("ups.model")),
-		"via_device":   "nutng",
+		"via_device":   "currently",
 	}
 	if s := u.Value("device.serial"); s != "" {
 		device["serial_number"] = s
@@ -330,7 +330,7 @@ func (p *publisher) discover(u sdk.UPS) {
 		}
 		obj := sanitize(strings.ReplaceAll(v, ".", "_"))
 		cfg := map[string]any{
-			"name": s.name, "unique_id": "nutng_" + name + "_" + obj, "object_id": "nutng_" + name + "_" + obj,
+			"name": s.name, "unique_id": "currently_" + name + "_" + obj, "object_id": "currently_" + name + "_" + obj,
 			"state_topic": state, "value_template": fmt.Sprintf("{{ value_json.vars[%q] }}", v),
 			"availability": availability, "availability_mode": "all", "device": device,
 		}
@@ -346,7 +346,7 @@ func (p *publisher) discover(u sdk.UPS) {
 		if s.stateClass != "" {
 			cfg["state_class"] = s.stateClass
 		}
-		p.publish(fmt.Sprintf("%s/sensor/nutng_%s/%s/config", p.o.DiscoveryPrefix, name, obj), cfg, true)
+		p.publish(fmt.Sprintf("%s/sensor/currently_%s/%s/config", p.o.DiscoveryPrefix, name, obj), cfg, true)
 	}
 
 	// Binary sensors from the status flags.
@@ -363,8 +363,8 @@ func (p *publisher) discover(u sdk.UPS) {
 		if done || u.Value("ups.status") == "" {
 			continue
 		}
-		p.publish(fmt.Sprintf("%s/binary_sensor/nutng_%s/%s/config", p.o.DiscoveryPrefix, name, b.obj), map[string]any{
-			"name": b.name, "unique_id": "nutng_" + name + "_" + b.obj, "object_id": "nutng_" + name + "_" + b.obj,
+		p.publish(fmt.Sprintf("%s/binary_sensor/currently_%s/%s/config", p.o.DiscoveryPrefix, name, b.obj), map[string]any{
+			"name": b.name, "unique_id": "currently_" + name + "_" + b.obj, "object_id": "currently_" + name + "_" + b.obj,
 			"state_topic": state, "value_template": b.tmpl, "device_class": b.class,
 			"availability": availability, "availability_mode": "all", "device": device,
 		}, true)

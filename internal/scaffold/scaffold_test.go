@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nut-ng/nut-ng/drivers/simulator"
-	"github.com/nut-ng/nut-ng/internal/core"
-	"github.com/nut-ng/nut-ng/internal/plugins"
-	"github.com/nut-ng/nut-ng/internal/registry"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/drivers/simulator"
+	"github.com/duskglow/currently/internal/core"
+	"github.com/duskglow/currently/internal/plugins"
+	"github.com/duskglow/currently/internal/registry"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -59,7 +59,7 @@ func buildGo(t *testing.T, kind, name string) string {
 	}
 	gobin := filepath.Join(runtime.GOROOT(), "bin", "go") //nolint:staticcheck // the go running the tests, even when it is not on PATH
 	bin := t.TempDir()
-	exe := "nutng-" + kind + "-" + name
+	exe := "currently-" + kind + "-" + name
 	if runtime.GOOS == "windows" {
 		exe += ".exe"
 	}
@@ -152,11 +152,11 @@ func checkDevice(t *testing.T, d sdk.Driver, cfg sdk.Config, setVar bool) {
 }
 
 // TestPythonScaffoldRuns needs a Python with the packages in
-// requirements.txt: NUTNG_TEST_PYTHON=/path/to/python go test ./internal/scaffold
+// requirements.txt: CURRENTLY_TEST_PYTHON=/path/to/python go test ./internal/scaffold
 func TestPythonScaffoldRuns(t *testing.T) {
-	py := os.Getenv("NUTNG_TEST_PYTHON")
+	py := os.Getenv("CURRENTLY_TEST_PYTHON")
 	if py == "" {
-		t.Skip("set NUTNG_TEST_PYTHON to a Python with grpcio, grpcio-health-checking and protobuf")
+		t.Skip("set CURRENTLY_TEST_PYTHON to a Python with grpcio, grpcio-health-checking and protobuf")
 	}
 	dir := filepath.Join(t.TempDir(), "py")
 	if _, err := Create(dir, Params{Kind: "driver", Name: "pyscaffold", Lang: "python", Python: py}); err != nil {

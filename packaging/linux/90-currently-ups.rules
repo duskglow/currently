@@ -1,0 +1,22 @@
+# Lets Currently read USB UPSes without running as root.
+#
+# hidraw device nodes are root-only by default. This rule gives the Currently
+# group access to UPSes from common vendors. Install it with:
+#
+#   sudo groupadd --system Currently            # if the group does not exist
+#   sudo cp 90-currently-ups.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload && sudo udevadm trigger
+#
+# then replug the UPS. Packages install this file for you.
+#
+# For a UPS from another vendor, copy a line and change idVendor to the
+# first four hex digits shown by `lsusb` or `currently detect`.
+
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="051d", MODE="0660", GROUP="currently"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0764", MODE="0660", GROUP="currently"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0501", MODE="0660", GROUP="currently"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0463", MODE="0660", GROUP="currently"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="09ae", MODE="0660", GROUP="currently"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="10af", MODE="0660", GROUP="currently"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="050d", MODE="0660", GROUP="currently"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0d9f", MODE="0660", GROUP="currently"

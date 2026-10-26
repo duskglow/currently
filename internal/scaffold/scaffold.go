@@ -1,4 +1,4 @@
-// Package scaffold creates new plugin projects for `nutng plugin new`.
+// Package scaffold creates new plugin projects for `currently plugin new`.
 package scaffold
 
 import (
@@ -24,10 +24,10 @@ type Params struct {
 	Kind string // "driver" or "output"
 	Name string
 	Lang string // "go" or "python"
-	// SDKPath, for Go, points go.mod at a local nut-ng checkout.
+	// SDKPath, for Go, points go.mod at a local Currently checkout.
 	SDKPath string
-	// NutngVersion is the nut-ng module version to require (Go).
-	NutngVersion string
+	// CurrentlyVersion is the Currently module version to require (Go).
+	CurrentlyVersion string
 	// Python is the interpreter to show in the example config.
 	Python string
 
@@ -68,8 +68,8 @@ func Create(dir string, p Params) ([]string, error) {
 			p.Python = "python"
 		}
 	}
-	if p.NutngVersion == "" {
-		p.NutngVersion = "v0.0.0"
+	if p.CurrentlyVersion == "" {
+		p.CurrentlyVersion = "v0.0.0"
 	}
 	if p.SDKPath != "" {
 		if p.SDKPath, err = filepath.Abs(p.SDKPath); err != nil {

@@ -1,7 +1,7 @@
 // Package nutproto serves UPS state over the Network UPS Tools protocol
 // (the upsd network protocol, version 1.3), so NUT clients such as upsc,
 // upsmon, Home Assistant, Synology DSM and Nagios check_ups work with
-// nutng unchanged.
+// Currently unchanged.
 package nutproto
 
 import (
@@ -20,8 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nut-ng/nut-ng/internal/nutwire"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/internal/nutwire"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // ProtocolVersion is the NUT network protocol version implemented.
@@ -199,7 +199,7 @@ func (c *conn) handle(args []string) bool {
 	rest := args[1:]
 	switch cmd {
 	case "VER":
-		c.send("Network UPS Tools upsd 2.8.1 compatible - nut-ng %s", c.s.opts.Version)
+		c.send("Network UPS Tools upsd 2.8.1 compatible - Currently %s", c.s.opts.Version)
 	case "NETVER", "PROTVER":
 		c.send(ProtocolVersion)
 	case "HELP":

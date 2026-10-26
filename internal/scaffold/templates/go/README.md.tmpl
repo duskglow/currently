@@ -1,16 +1,16 @@
-# nutng-{{.Kind}}-{{.Name}}
+# currently-{{.Kind}}-{{.Name}}
 
-A nutng {{.Kind}} plugin, created by `nutng plugin new`.
+A Currently {{.Kind}} plugin, created by `currently plugin new`.
 
 ```sh
 go mod tidy
-go build -o nutng-{{.Kind}}-{{.Name}}{{.Exe}}
+go build -o currently-{{.Kind}}-{{.Name}}{{.Exe}}
 ```
 
-Copy the executable to a plugin directory (`nutng plugin list` shows them),
-then check it with `nutng plugin info {{.Name}}`.
+Copy the executable to a plugin directory (`currently plugin list` shows them),
+then check it with `currently plugin info {{.Name}}`.
 {{if not .SDKPath}}
-nut-ng is not published as a Go module yet. Until it is, add a replace
-line to go.mod that points at a nut-ng checkout, or create the plugin with
-`nutng plugin new --sdk /path/to/nut-ng`.
+Currently is not published as a Go module yet. Until it is, add a replace
+line to go.mod that points at a Currently checkout, or create the plugin with
+`currently plugin new --sdk /path/to/currently`.
 {{end}}

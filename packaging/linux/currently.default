@@ -1,0 +1,7 @@
+# Environment for the Currently service, as NAME=value lines. Use it for the
+# secrets that currently.yaml names with *_env settings, for example:
+#
+#   CURRENTLY_API_TOKEN=change-me
+#   CURRENTLY_MONITOR_PASSWORD=change-me
+#
+# Keep this file readable by root only (chmod 600).

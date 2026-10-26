@@ -1,6 +1,6 @@
 #!/bin/sh
-# Runs after the nutng package is removed. The config in /etc/nutng and
-# the nutng group are kept.
+# Runs after the Currently package is removed. The config in /etc/currently and
+# the Currently group are kept.
 if [ -d /run/systemd/system ]; then
 	systemctl daemon-reload >/dev/null 2>&1 || true
 fi

@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nut-ng/nut-ng/drivers/simulator"
-	"github.com/nut-ng/nut-ng/internal/core"
-	"github.com/nut-ng/nut-ng/outputs/nutproto"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/drivers/simulator"
+	"github.com/duskglow/currently/internal/core"
+	"github.com/duskglow/currently/outputs/nutproto"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -27,7 +27,7 @@ func (deadDriver) Open(context.Context, sdk.Config, *slog.Logger) (sdk.Device, e
 	return nil, io.ErrUnexpectedEOF
 }
 
-// server runs a nutng core with UPS "sim" (and "dead", which never
+// server runs a Currently core with UPS "sim" (and "dead", which never
 // connects unless onlySim) behind a NUT protocol server.
 func server(t *testing.T, onlySim bool) (addr string, host *core.Core, srv *nutproto.Server) {
 	t.Helper()

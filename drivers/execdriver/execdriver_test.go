@@ -10,13 +10,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
-// The test binary doubles as the external program: with NUTNG_HELPER set,
+// The test binary doubles as the external program: with CURRENTLY_HELPER set,
 // TestHelper prints what the mode asks for and exits.
 func TestHelper(t *testing.T) {
-	mode := os.Getenv("NUTNG_HELPER")
+	mode := os.Getenv("CURRENTLY_HELPER")
 	if mode == "" {
 		return
 	}
@@ -33,13 +33,13 @@ func TestHelper(t *testing.T) {
 		fmt.Fprintln(os.Stderr, "cannot reach the UPS")
 		os.Exit(2)
 	case "command":
-		fmt.Println("param=" + os.Getenv("NUTNG_PARAM"))
+		fmt.Println("param=" + os.Getenv("CURRENTLY_PARAM"))
 	}
 	os.Exit(0)
 }
 
 func helper(t *testing.T, mode string) []any {
-	t.Setenv("NUTNG_HELPER", mode)
+	t.Setenv("CURRENTLY_HELPER", mode)
 	return []any{os.Args[0], "-test.run=^TestHelper$"}
 }
 
@@ -130,7 +130,7 @@ func TestOptions(t *testing.T) {
 			t.Errorf("%v: no error", cfg)
 		}
 	}
-	if _, err := d.Open(context.Background(), sdk.Config{"command": []any{"surely-no-such-program-nutng"}}, quiet); err == nil {
+	if _, err := d.Open(context.Background(), sdk.Config{"command": []any{"surely-no-such-program-currently"}}, quiet); err == nil {
 		t.Error("missing program accepted")
 	}
 }

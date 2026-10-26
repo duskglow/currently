@@ -43,7 +43,7 @@ const (
 	UnitCelsius = "°C"
 )
 
-// knownVars lists the NUT variables nut-ng understands. Drivers may report
+// knownVars lists the NUT variables Currently understands. Drivers may report
 // others; they are passed through without a unit.
 var knownVars = map[string]VarSpec{}
 

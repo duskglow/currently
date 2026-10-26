@@ -1,7 +1,0 @@
-# Environment for the nutng service, as NAME=value lines. Use it for the
-# secrets that nutng.yaml names with *_env settings, for example:
-#
-#   NUTNG_API_TOKEN=change-me
-#   NUTNG_MONITOR_PASSWORD=change-me
-#
-# Keep this file readable by root only (chmod 600).

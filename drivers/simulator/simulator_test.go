@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 func newTestModel(t *testing.T, cfg sdk.Config) *model {

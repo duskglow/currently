@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // Bus fans events out to subscribers. Publishing never blocks: a subscriber

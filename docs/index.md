@@ -1,12 +1,12 @@
-# nut-ng
+# Currently
 
-nut-ng (`nutng`) monitors UPSes and shuts computers down safely when the
+Currently (`currently`) monitors UPSes and shuts computers down safely when the
 power runs out, like [NUT](https://networkupstools.org/), but with one
 self-contained binary, one short config file and error messages that say
 how to fix the problem.
 
-- **Finds your UPS by itself.** Plug in the USB cable and run `nutng serve`:
-  no config is needed to start. `nutng init` writes a config in a few
+- **Finds your UPS by itself.** Plug in the USB cable and run `currently serve`:
+  no config is needed to start. `currently init` writes a config in a few
   questions.
 - **Works with the tools you already use.** It speaks the
   [NUT protocol](outputs/nut.md) (upsc, upsmon, Home Assistant, Synology,
@@ -22,7 +22,7 @@ how to fix the problem.
   [plugins](plugins.md), in Go, Python or anything that speaks gRPC.
 
 ```console
-$ nutng status
+$ currently status
 rack  CyberPower CP1500PFCLCD  (usbhid driver)
   Status      online, charging
   Battery     100%, 45m30s left, 24.0 V

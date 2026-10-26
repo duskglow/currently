@@ -17,10 +17,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nut-ng/nut-ng/drivers/simulator"
-	"github.com/nut-ng/nut-ng/internal/core"
-	"github.com/nut-ng/nut-ng/internal/nutwire"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/drivers/simulator"
+	"github.com/duskglow/currently/internal/core"
+	"github.com/duskglow/currently/internal/nutwire"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -287,7 +287,7 @@ func selfSigned(t *testing.T) tls.Certificate {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tmpl := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "nutng-test"},
+	tmpl := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "currently-test"},
 		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour)}
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
 	if err != nil {

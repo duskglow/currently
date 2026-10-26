@@ -1,6 +1,6 @@
 # SNMP
 
-nutng includes an SNMP agent that serves the standard UPS-MIB
+Currently includes an SNMP agent that serves the standard UPS-MIB
 ([RFC 1628](https://www.rfc-editor.org/rfc/rfc1628)), so network monitors
 poll it like a UPS network card. It answers SNMPv1, v2c and v3 (with
 authentication and AES privacy) and sends v2c traps. It is read-only.
@@ -15,9 +15,9 @@ listen:
     users:                     # SNMPv3
       monitor:
         auth: sha256           # none, md5, sha, sha224, sha256, sha384, sha512
-        auth_password_env: NUTNG_SNMP_AUTH
+        auth_password_env: CURRENTLY_SNMP_AUTH
         privacy: aes           # none or aes (AES-128)
-        privacy_password_env: NUTNG_SNMP_PRIV
+        privacy_password_env: CURRENTLY_SNMP_PRIV
     traps:
       - target: librenms.example.com     # port 162 by default
         community: my-community
@@ -26,14 +26,14 @@ listen:
 `listen.snmp: ":1161"` alone turns it on with community `public`.
 
 ```sh
-snmpwalk -v2c -c my-community nutng-host:1161 1.3.6.1.2.1.33
+snmpwalk -v2c -c my-community currently-host:1161 1.3.6.1.2.1.33
 snmpget -v3 -l authPriv -u monitor -a SHA-256 -A '...' -x AES -X '...' \
-  nutng-host:1161 1.3.6.1.2.1.33.1.2.4.0
+  currently-host:1161 1.3.6.1.2.1.33.1.2.4.0
 ```
 
 ## Several UPSes
 
-The UPS-MIB describes one UPS. nutng serves the UPS named in
+The UPS-MIB describes one UPS. Currently serves the UPS named in
 `listen.snmp.ups` (default: the first one) and the others by name:
 
 - **SNMPv3**: the context name selects the UPS (`snmpget -n lab ...`).
@@ -60,7 +60,7 @@ hardware cards.
 **Alarms** come from the status flags: battery bad (`RB`), on battery
 (`OB`), low battery (`LB`), output overload (`OVER`), on bypass, output
 off, general fault (`ALARM`), shutdown pending (`FSD`), test in progress,
-and communications lost when nutng loses the UPS.
+and communications lost when Currently loses the UPS.
 
 **Traps** (SNMPv2c, to every `traps` target): `upsTrapOnBattery` when the
 UPS goes on battery and every minute while it stays there, and
@@ -79,7 +79,7 @@ context.
 the community "UPS SNMP" templates) to a host with an SNMP interface on
 port 1161.
 
-**PRTG**: add a device with the nutng host and the SNMP settings, then the
+**PRTG**: add a device with the Currently host and the SNMP settings, then the
 *SNMP Custom Table* sensor on `1.3.6.1.2.1.33.1.2` (or PRTG's UPS health
 sensor, which reads the UPS-MIB).
 
@@ -95,6 +95,6 @@ is installed).
   restarts; set `engine_id` (hex) to choose one. `engineBoots` comes from
   the clock, so it grows at every restart without a state file.
 - Ports below 1024 need root (or `CAP_NET_BIND_SERVICE` on Linux). If
-  snmpd already uses 161, keep nutng on 1161, or have snmpd proxy
+  snmpd already uses 161, keep Currently on 1161, or have snmpd proxy
   `1.3.6.1.2.1.33` to it.
-- `nutng doctor` checks that the agent answers.
+- `currently doctor` checks that the agent answers.

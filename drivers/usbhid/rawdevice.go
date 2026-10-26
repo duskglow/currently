@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/nut-ng/nut-ng/drivers/usbhid/hid"
+	"github.com/duskglow/currently/drivers/usbhid/hid"
 )
 
 // reportBackend reads and writes raw reports. buf[0] holds the report ID

@@ -13,7 +13,7 @@ import (
 
 	"github.com/gosnmp/gosnmp"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -168,7 +168,7 @@ func TestUPSMIBv2c(t *testing.T) {
 	_, addr := startAgent(t, newHost(), Options{Community: community})
 	g := client(t, addr, nil)
 
-	if s := getString(t, g, ".1.3.6.1.2.1.1.1.0"); !strings.HasPrefix(s, "nut-ng test") {
+	if s := getString(t, g, ".1.3.6.1.2.1.1.1.0"); !strings.HasPrefix(s, "Currently test") {
 		t.Errorf("sysDescr = %q", s)
 	}
 	for oid, want := range map[string]int64{

@@ -11,8 +11,8 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	nutngv1 "github.com/nut-ng/nut-ng/gen/nutng/v1"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	currentlyv1 "github.com/duskglow/currently/gen/currently/v1"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // ConfigToProto converts plugin settings for the wire.
@@ -36,35 +36,35 @@ func ConfigFromProto(s *structpb.Struct) sdk.Config {
 }
 
 // InfoToProto converts plugin information.
-func InfoToProto(i sdk.Info) *nutngv1.PluginInfo {
-	k := nutngv1.PluginKind_PLUGIN_KIND_DRIVER
+func InfoToProto(i sdk.Info) *currentlyv1.PluginInfo {
+	k := currentlyv1.PluginKind_PLUGIN_KIND_DRIVER
 	if i.Kind == sdk.KindOutput {
-		k = nutngv1.PluginKind_PLUGIN_KIND_OUTPUT
+		k = currentlyv1.PluginKind_PLUGIN_KIND_OUTPUT
 	}
-	return &nutngv1.PluginInfo{Name: i.Name, Kind: k, Version: i.Version, Description: i.Description,
+	return &currentlyv1.PluginInfo{Name: i.Name, Kind: k, Version: i.Version, Description: i.Description,
 		ProtocolVersion: sdk.ProtocolVersion}
 }
 
 // InfoFromProto converts plugin information.
-func InfoFromProto(p *nutngv1.PluginInfo) sdk.Info {
+func InfoFromProto(p *currentlyv1.PluginInfo) sdk.Info {
 	k := sdk.KindDriver
-	if p.GetKind() == nutngv1.PluginKind_PLUGIN_KIND_OUTPUT {
+	if p.GetKind() == currentlyv1.PluginKind_PLUGIN_KIND_OUTPUT {
 		k = sdk.KindOutput
 	}
 	return sdk.Info{Name: p.GetName(), Kind: k, Version: p.GetVersion(), Description: p.GetDescription()}
 }
 
 // CommandsToProto converts commands.
-func CommandsToProto(cmds []sdk.Command) []*nutngv1.Command {
-	out := make([]*nutngv1.Command, len(cmds))
+func CommandsToProto(cmds []sdk.Command) []*currentlyv1.Command {
+	out := make([]*currentlyv1.Command, len(cmds))
 	for i, c := range cmds {
-		out[i] = &nutngv1.Command{Name: c.Name, Description: c.Description}
+		out[i] = &currentlyv1.Command{Name: c.Name, Description: c.Description}
 	}
 	return out
 }
 
 // CommandsFromProto converts commands.
-func CommandsFromProto(cmds []*nutngv1.Command) []sdk.Command {
+func CommandsFromProto(cmds []*currentlyv1.Command) []sdk.Command {
 	out := make([]sdk.Command, len(cmds))
 	for i, c := range cmds {
 		out[i] = sdk.Command{Name: c.GetName(), Description: c.GetDescription()}
@@ -72,26 +72,26 @@ func CommandsFromProto(cmds []*nutngv1.Command) []sdk.Command {
 	return out
 }
 
-var connStates = map[sdk.ConnState]nutngv1.ConnState{
-	sdk.StateConnecting: nutngv1.ConnState_CONN_STATE_CONNECTING,
-	sdk.StateConnected:  nutngv1.ConnState_CONN_STATE_CONNECTED,
-	sdk.StateStale:      nutngv1.ConnState_CONN_STATE_STALE,
-	sdk.StateFailed:     nutngv1.ConnState_CONN_STATE_FAILED,
+var connStates = map[sdk.ConnState]currentlyv1.ConnState{
+	sdk.StateConnecting: currentlyv1.ConnState_CONN_STATE_CONNECTING,
+	sdk.StateConnected:  currentlyv1.ConnState_CONN_STATE_CONNECTED,
+	sdk.StateStale:      currentlyv1.ConnState_CONN_STATE_STALE,
+	sdk.StateFailed:     currentlyv1.ConnState_CONN_STATE_FAILED,
 }
 
 // UPSToProto converts a UPS snapshot.
-func UPSToProto(u sdk.UPS) *nutngv1.UPS {
-	vars := make(map[string]*nutngv1.Variable, len(u.Vars))
+func UPSToProto(u sdk.UPS) *currentlyv1.UPS {
+	vars := make(map[string]*currentlyv1.Variable, len(u.Vars))
 	for k, v := range u.Vars {
-		vars[k] = &nutngv1.Variable{Name: v.Name, Value: v.Value, Unit: v.Unit, Writable: v.Writable, Updated: ts(v.Updated)}
+		vars[k] = &currentlyv1.Variable{Name: v.Name, Value: v.Value, Unit: v.Unit, Writable: v.Writable, Updated: ts(v.Updated)}
 	}
-	return &nutngv1.UPS{Name: u.Name, Description: u.Description, Driver: u.Driver, State: connStates[u.State],
+	return &currentlyv1.UPS{Name: u.Name, Description: u.Description, Driver: u.Driver, State: connStates[u.State],
 		LastError: u.LastError, LastUpdate: ts(u.LastUpdate), Restarts: int32(u.Restarts), Vars: vars,
 		Commands: CommandsToProto(u.Commands)}
 }
 
 // UPSFromProto converts a UPS snapshot.
-func UPSFromProto(p *nutngv1.UPS) sdk.UPS {
+func UPSFromProto(p *currentlyv1.UPS) sdk.UPS {
 	u := sdk.UPS{Name: p.GetName(), Description: p.GetDescription(), Driver: p.GetDriver(), State: sdk.StateConnecting,
 		LastError: p.GetLastError(), Restarts: int(p.GetRestarts()), Vars: map[string]sdk.Variable{},
 		Commands: CommandsFromProto(p.GetCommands())}
@@ -114,12 +114,12 @@ func UPSFromProto(p *nutngv1.UPS) sdk.UPS {
 }
 
 // EventToProto converts an event.
-func EventToProto(e sdk.Event) *nutngv1.Event {
-	return &nutngv1.Event{Seq: e.Seq, Time: ts(e.Time), Ups: e.UPS, Type: string(e.Type), Message: e.Message, Changed: e.Changed}
+func EventToProto(e sdk.Event) *currentlyv1.Event {
+	return &currentlyv1.Event{Seq: e.Seq, Time: ts(e.Time), Ups: e.UPS, Type: string(e.Type), Message: e.Message, Changed: e.Changed}
 }
 
 // EventFromProto converts an event.
-func EventFromProto(p *nutngv1.Event) sdk.Event {
+func EventFromProto(p *currentlyv1.Event) sdk.Event {
 	e := sdk.Event{Seq: p.GetSeq(), UPS: p.GetUps(), Type: sdk.EventType(p.GetType()), Message: p.GetMessage(), Changed: p.GetChanged()}
 	if p.GetTime() != nil {
 		e.Time = p.GetTime().AsTime()

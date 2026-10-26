@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/nut-ng/nut-ng/drivers/usbhid/hid"
+	"github.com/duskglow/currently/drivers/usbhid/hid"
 )
 
 // The FreeBSD transport opens /dev/uhidN (uhid(4), the default HID driver
@@ -156,9 +156,9 @@ func openDevice(info DeviceInfo) (Device, error) {
 	if err != nil {
 		switch {
 		case errors.Is(err, os.ErrPermission):
-			return nil, fmt.Errorf("permission denied opening %s (%s); run nutng as root (the default service)", info.Path, info.Description())
+			return nil, fmt.Errorf("permission denied opening %s (%s); run Currently as root (the default service)", info.Path, info.Description())
 		case errors.Is(err, unix.EBUSY):
-			return nil, fmt.Errorf("%s (%s) is in use by another program (NUT's usbhid-ups, or another nutng?)", info.Path, info.Description())
+			return nil, fmt.Errorf("%s (%s) is in use by another program (NUT's usbhid-ups, or another Currently?)", info.Path, info.Description())
 		}
 		return nil, err
 	}

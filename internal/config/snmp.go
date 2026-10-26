@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/nut-ng/nut-ng/internal/suggest"
-	"github.com/nut-ng/nut-ng/outputs/snmp"
+	"github.com/duskglow/currently/internal/suggest"
+	"github.com/duskglow/currently/outputs/snmp"
 )
 
 func (c *Config) validateSNMP(s *SNMP, checkAddr func(key, addr, example string), add func(path, format string, args ...any)) {

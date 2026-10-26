@@ -1,4 +1,4 @@
-// Package config loads and validates nutng.yaml.
+// Package config loads and validates currently.yaml.
 package config
 
 import (
@@ -17,18 +17,18 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/nut-ng/nut-ng/internal/registry"
-	"github.com/nut-ng/nut-ng/internal/suggest"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/internal/registry"
+	"github.com/duskglow/currently/internal/suggest"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
-// Config is the whole nutng.yaml file.
+// Config is the whole currently.yaml file.
 type Config struct {
 	UPS    map[string]UPS  `yaml:"ups"`
 	Listen Listen          `yaml:"listen"`
 	API    API             `yaml:"api"`
 	Users  map[string]User `yaml:"users,omitempty"`
-	// Shutdown is the shutdown policy. Without it, nutng only monitors and
+	// Shutdown is the shutdown policy. Without it, Currently only monitors and
 	// never shuts this computer down.
 	Shutdown *Shutdown `yaml:"shutdown,omitempty"`
 	// Outputs are output plugins to run, by name.
@@ -56,7 +56,7 @@ type UPS struct {
 	Options     sdk.Config    `yaml:",inline"`
 }
 
-// Listen sets where nutng serves.
+// Listen sets where Currently serves.
 type Listen struct {
 	// HTTP is the address of the REST API, or "off".
 	HTTP string `yaml:"http"`
@@ -68,7 +68,7 @@ type Listen struct {
 	// Metrics is empty to serve Prometheus metrics at /metrics on the HTTP
 	// address, a separate host:port, or "off".
 	Metrics string `yaml:"metrics,omitempty"`
-	// Control is the local socket the nutng CLI talks to. Empty selects a
+	// Control is the local socket the Currently CLI talks to. Empty selects a
 	// default path.
 	Control string `yaml:"control,omitempty"`
 	// SNMP enables the SNMP agent (UPS-MIB).
@@ -200,11 +200,11 @@ type Output struct {
 
 // Plugins says where to find plugins besides the default directories.
 type Plugins struct {
-	// Dirs are searched for nutng-driver-* and nutng-output-* executables
+	// Dirs are searched for currently-driver-* and currently-output-* executables
 	// before the default directories.
 	Dirs []string `yaml:"dirs,omitempty"`
 	// Commands start plugins that need an interpreter, such as
-	// ["python3", "/opt/nutng/plugins/mydriver.py"].
+	// ["python3", "/opt/currently/plugins/mydriver.py"].
 	Commands [][]string `yaml:"commands,omitempty"`
 }
 
@@ -650,7 +650,7 @@ func (c *Config) Validate(reg *registry.Registry) error {
 			if len(outputs) > 0 {
 				hint = "installed: " + strings.Join(outputs, ", ")
 			}
-			add(key, "output %s: no output plugin named %q%s (%s; see `nutng plugin list`)", name, plugin, suggest.DidYouMean(plugin, outputs), hint)
+			add(key, "output %s: no output plugin named %q%s (%s; see `currently plugin list`)", name, plugin, suggest.DidYouMean(plugin, outputs), hint)
 			continue
 		}
 		if err := out.ValidateConfig(o.Options); err != nil {

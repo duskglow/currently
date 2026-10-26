@@ -1,4 +1,4 @@
-// Command nutng-driver-testdriver is a driver plugin for the loader tests.
+// Command currently-driver-testdriver is a driver plugin for the loader tests.
 package main
 
 import (
@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/plugin"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/plugin"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 type driver struct{}

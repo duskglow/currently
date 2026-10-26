@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nut-ng/nut-ng/internal/registry"
+	"github.com/duskglow/currently/internal/registry"
 )
 
 func TestParseValid(t *testing.T) {
@@ -24,7 +24,7 @@ listen:
 log:
   level: debug
 `
-	c, err := Parse("nutng.yaml", []byte(src))
+	c, err := Parse("currently.yaml", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ log:
 }
 
 func TestParseEmptyIsDefault(t *testing.T) {
-	c, err := Parse("nutng.yaml", []byte("# nothing yet\n"))
+	c, err := Parse("currently.yaml", []byte("# nothing yet\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,14 +67,14 @@ func TestParseErrors(t *testing.T) {
 		name, src string
 		want      []string
 	}{
-		{"unknown top-level key", "lisen:\n  http: off\n", []string{"nutng.yaml:1:", `did you mean "listen"`}},
-		{"unknown nested key", "log:\n  levle: info\n", []string{"nutng.yaml:2:", `did you mean "level"`}},
-		{"bad yaml", "ups:\n  rack: [\n", []string{"nutng.yaml:"}},
-		{"wrong type", "ups:\n  rack:\n    stale_after: soon\n", []string{"nutng.yaml:3:"}},
+		{"unknown top-level key", "lisen:\n  http: off\n", []string{"currently.yaml:1:", `did you mean "listen"`}},
+		{"unknown nested key", "log:\n  levle: info\n", []string{"currently.yaml:2:", `did you mean "level"`}},
+		{"bad yaml", "ups:\n  rack: [\n", []string{"currently.yaml:"}},
+		{"wrong type", "ups:\n  rack:\n    stale_after: soon\n", []string{"currently.yaml:3:"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := Parse("nutng.yaml", []byte(tt.src))
+			_, err := Parse("currently.yaml", []byte(tt.src))
 			if err == nil {
 				t.Fatal("no error")
 			}
@@ -92,18 +92,18 @@ func TestValidateErrors(t *testing.T) {
 		name, src string
 		want      []string
 	}{
-		{"unknown driver", "ups:\n  rack:\n    driver: simulater\n", []string{"nutng.yaml:3:", `did you mean "simulator"`}},
-		{"usbhid option typo", "ups:\n  rack:\n    serail: X1\n", []string{"nutng.yaml:3:", "usbhid driver", `did you mean "serial"`}},
-		{"driver option typo", "ups:\n  rack:\n    driver: simulator\n    scenaro: cycle\n", []string{"nutng.yaml:4:", `did you mean "scenario"`}},
-		{"driver option value", "ups:\n  rack:\n    driver: simulator\n    load: 150\n", []string{"nutng.yaml:4:", "load must be between 0 and 100"}},
+		{"unknown driver", "ups:\n  rack:\n    driver: simulater\n", []string{"currently.yaml:3:", `did you mean "simulator"`}},
+		{"usbhid option typo", "ups:\n  rack:\n    serail: X1\n", []string{"currently.yaml:3:", "usbhid driver", `did you mean "serial"`}},
+		{"driver option typo", "ups:\n  rack:\n    driver: simulator\n    scenaro: cycle\n", []string{"currently.yaml:4:", `did you mean "scenario"`}},
+		{"driver option value", "ups:\n  rack:\n    driver: simulator\n    load: 150\n", []string{"currently.yaml:4:", "load must be between 0 and 100"}},
 		{"bad name", "ups:\n  my ups:\n    driver: simulator\n", []string{"may only contain"}},
-		{"bad listen", "listen:\n  http: localhost\n", []string{"nutng.yaml:2:", "host:port"}},
-		{"bad level", "log:\n  level: verbose\n", []string{"nutng.yaml:2:", "log.level"}},
-		{"missing token env", "api:\n  token_env: NUTNG_TEST_SURELY_UNSET\n", []string{"NUTNG_TEST_SURELY_UNSET", "not set"}},
+		{"bad listen", "listen:\n  http: localhost\n", []string{"currently.yaml:2:", "host:port"}},
+		{"bad level", "log:\n  level: verbose\n", []string{"currently.yaml:2:", "log.level"}},
+		{"missing token env", "api:\n  token_env: CURRENTLY_TEST_SURELY_UNSET\n", []string{"CURRENTLY_TEST_SURELY_UNSET", "not set"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := Parse("nutng.yaml", []byte(tt.src))
+			c, err := Parse("currently.yaml", []byte(tt.src))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -121,7 +121,7 @@ func TestValidateErrors(t *testing.T) {
 }
 
 func TestDefaultDriver(t *testing.T) {
-	c, err := Parse("nutng.yaml", []byte("ups:\n  rack:\n    serial: X1\n"))
+	c, err := Parse("currently.yaml", []byte("ups:\n  rack:\n    serial: X1\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestDefaultDriver(t *testing.T) {
 }
 
 func TestHTTPOff(t *testing.T) {
-	c, err := Parse("nutng.yaml", []byte("listen:\n  http: off\n"))
+	c, err := Parse("currently.yaml", []byte("listen:\n  http: off\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,20 +156,20 @@ func TestYAMLHidesToken(t *testing.T) {
 }
 
 func TestUsersAndListeners(t *testing.T) {
-	t.Setenv("NUTNG_TEST_UPSMON_PW", "s3cret")
+	t.Setenv("CURRENTLY_TEST_UPSMON_PW", "s3cret")
 	src := `
 listen:
   nut: ":3493"
   metrics: 127.0.0.1:9301
 users:
   upsmon:
-    password_env: NUTNG_TEST_UPSMON_PW
+    password_env: CURRENTLY_TEST_UPSMON_PW
     role: master
   admin:
     password: hunter2
     role: admin
 `
-	c, err := Parse("nutng.yaml", []byte(src))
+	c, err := Parse("currently.yaml", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,16 +194,16 @@ func TestUsersAndListenerErrors(t *testing.T) {
 		name, src string
 		want      []string
 	}{
-		{"bad role", "users:\n  u:\n    password: x\n    role: primray\n", []string{"nutng.yaml:4:", `did you mean "primary"`}},
-		{"no password", "users:\n  u:\n    role: primary\n", []string{"nutng.yaml:2:", "set password or password_env"}},
-		{"user key typo", "users:\n  u:\n    pasword: x\n", []string{"nutng.yaml:3:", `did you mean "password"`}},
-		{"bad nut addr", "listen:\n  nut: 3493\n", []string{"nutng.yaml:2:", "listen.nut"}},
+		{"bad role", "users:\n  u:\n    password: x\n    role: primray\n", []string{"currently.yaml:4:", `did you mean "primary"`}},
+		{"no password", "users:\n  u:\n    role: primary\n", []string{"currently.yaml:2:", "set password or password_env"}},
+		{"user key typo", "users:\n  u:\n    pasword: x\n", []string{"currently.yaml:3:", `did you mean "password"`}},
+		{"bad nut addr", "listen:\n  nut: 3493\n", []string{"currently.yaml:2:", "listen.nut"}},
 		{"metrics without http", "listen:\n  http: off\n", []string{"listen.metrics"}},
 		{"missing cert", "listen:\n  nut_tls:\n    cert_file: /nonexistent.pem\n    key_file: /nonexistent.key\n", []string{"cert_file"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := Parse("nutng.yaml", []byte(tt.src))
+			c, err := Parse("currently.yaml", []byte(tt.src))
 			if err == nil {
 				err = c.Validate(registry.Builtin())
 			}

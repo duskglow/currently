@@ -3,22 +3,22 @@
 Plug in the UPS's USB cable, then:
 
 ```sh
-nutng detect    # list the UPSes nutng can see
-sudo nutng init # pick one, name it, choose when to shut down, write nutng.yaml
+currently detect    # list the UPSes currently can see
+sudo currently init # pick one, name it, choose when to shut down, write currently.yaml
 ```
 
 Run it in the foreground to try it, or as a service:
 
 ```sh
-nutng serve                    # foreground; Ctrl-C to stop
-sudo nutng service install     # at boot (an Administrator terminal on Windows)
-sudo nutng service start       # also: stop, restart, status, uninstall
+currently serve                    # foreground; Ctrl-C to stop
+sudo currently service install     # at boot (an Administrator terminal on Windows)
+sudo currently service start       # also: stop, restart, status, uninstall
 ```
 
-Packages install the service for you; then `nutng init` and
-`nutng service start` are all you need.
+Packages install the service for you; then `currently init` and
+`currently service start` are all you need.
 
-Without a config file, `nutng serve` monitors every USB UPS it finds and
+Without a config file, `currently serve` monitors every USB UPS it finds and
 serves the REST API, Prometheus metrics and the NUT protocol on this
 machine only. It never shuts anything down until you add a
 [`shutdown`](shutdown.md) section.
@@ -26,23 +26,23 @@ machine only. It never shuts anything down until you add a
 ## Looking at the UPS
 
 ```sh
-nutng status                 # summary, or detail when there is one UPS
-nutng watch                  # live view with recent events
-nutng vars rack              # every variable the UPS reports
-nutng cmd rack               # the commands it accepts
-nutng cmd rack beeper.disable
-nutng set rack battery.charge.low 20
-nutng doctor                 # check the whole setup, with fixes for problems
+currently status                 # summary, or detail when there is one UPS
+currently watch                  # live view with recent events
+currently vars rack              # every variable the UPS reports
+currently cmd rack               # the commands it accepts
+currently cmd rack beeper.disable
+currently set rack battery.charge.low 20
+currently doctor                 # check the whole setup, with fixes for problems
 ```
 
-No UPS at hand? `nutng serve --demo` adds a simulated one whose mains
+No UPS at hand? `currently serve --demo` adds a simulated one whose mains
 power fails for a minute every three minutes, and
-`nutng cmd demo sim.power.fail` rehearses an outage.
+`currently cmd demo sim.power.fail` rehearses an outage.
 
 ## Letting monitoring tools in
 
 Everything listens on `127.0.0.1` until you say otherwise. To let other
-machines query nutng, change the addresses under `listen:`:
+machines query Currently, change the addresses under `listen:`:
 
 ```yaml
 listen:
@@ -53,4 +53,4 @@ listen:
     community: my-community
 ```
 
-Then `sudo nutng service restart`. See [Monitoring tools](outputs/index.md).
+Then `sudo currently service restart`. See [Monitoring tools](outputs/index.md).

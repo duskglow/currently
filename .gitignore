@@ -8,7 +8,7 @@ coverage.*
 
 # Local runtime files
 *.sock
-/nutng.yaml
+/currently.yaml
 
 # Editors / OS
 .idea/

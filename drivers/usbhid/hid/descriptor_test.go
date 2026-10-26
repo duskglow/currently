@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/nut-ng/nut-ng/drivers/usbhid/hid"
-	"github.com/nut-ng/nut-ng/drivers/usbhid/hid/hidtest"
+	"github.com/duskglow/currently/drivers/usbhid/hid"
+	"github.com/duskglow/currently/drivers/usbhid/hid/hidtest"
 )
 
 func field(t *testing.T, d *hid.Descriptor, path string) *hid.Field {

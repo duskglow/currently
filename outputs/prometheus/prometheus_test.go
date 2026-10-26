@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 func sample() []sdk.UPS {
@@ -46,33 +46,33 @@ func TestWrite(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		`nutng_build_info{version="v1.2.3"} 1`,
-		`nutng_ups_up{ups="rack"} 1`,
-		`nutng_ups_up{ups="closet"} 0`,
-		`nutng_battery_charge_percent{ups="rack"} 42`,
-		`nutng_battery_runtime_seconds{ups="rack"} 600`,
-		`nutng_input_voltage_volts{ups="rack"} 0`,
-		`nutng_ups_power_voltamperes{ups="rack"} 379`,
-		`nutng_ups_temperature_celsius{ups="rack"} 31.5`,
-		`nutng_ups_status{flag="OB",ups="rack"} 1`,
-		`nutng_ups_status{flag="OL",ups="rack"} 0`,
-		`nutng_ups_status{flag="LB",ups="rack"} 1`,
-		`nutng_ups_driver_restarts_total{ups="closet"} 3`,
-		`nutng_ups_last_update_timestamp_seconds{ups="rack"} 1.7000000005e+09`,
+		`currently_build_info{version="v1.2.3"} 1`,
+		`currently_ups_up{ups="rack"} 1`,
+		`currently_ups_up{ups="closet"} 0`,
+		`currently_battery_charge_percent{ups="rack"} 42`,
+		`currently_battery_runtime_seconds{ups="rack"} 600`,
+		`currently_input_voltage_volts{ups="rack"} 0`,
+		`currently_ups_power_voltamperes{ups="rack"} 379`,
+		`currently_ups_temperature_celsius{ups="rack"} 31.5`,
+		`currently_ups_status{flag="OB",ups="rack"} 1`,
+		`currently_ups_status{flag="OL",ups="rack"} 0`,
+		`currently_ups_status{flag="LB",ups="rack"} 1`,
+		`currently_ups_driver_restarts_total{ups="closet"} 3`,
+		`currently_ups_last_update_timestamp_seconds{ups="rack"} 1.7000000005e+09`,
 		`description="Rack \"A\""`,
-		"# TYPE nutng_ups_driver_restarts_total counter",
+		"# TYPE currently_ups_driver_restarts_total counter",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %s", want)
 		}
 	}
 	// A stale UPS must not export its last values as current.
-	if strings.Contains(out, `nutng_battery_charge_percent{ups="closet"}`) {
+	if strings.Contains(out, `currently_battery_charge_percent{ups="closet"}`) {
 		t.Error("stale UPS exported values")
 	}
 	// Each metric family appears once, with HELP and TYPE.
-	if n := strings.Count(out, "# TYPE nutng_ups_status "); n != 1 {
-		t.Errorf("nutng_ups_status TYPE lines: %d", n)
+	if n := strings.Count(out, "# TYPE currently_ups_status "); n != 1 {
+		t.Errorf("currently_ups_status TYPE lines: %d", n)
 	}
 	if strings.Contains(out, "beeper") {
 		t.Error("non-numeric variable exported")

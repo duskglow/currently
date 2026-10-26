@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nut-ng/nut-ng/internal/registry"
+	"github.com/duskglow/currently/internal/registry"
 )
 
 func TestShutdownConfig(t *testing.T) {
@@ -18,7 +18,7 @@ shutdown:
     on_battery_for: 2m
   hooks: ["echo stop vms"]
 `
-	c, err := Parse("nutng.yaml", []byte(src))
+	c, err := Parse("currently.yaml", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,16 +42,16 @@ func TestShutdownConfigErrors(t *testing.T) {
 		name, src string
 		want      []string
 	}{
-		{"unknown ups", "ups:\n  rack: {driver: simulator}\nshutdown:\n  ups: [rakc]\n", []string{"nutng.yaml:4:", `did you mean "rack"`}},
+		{"unknown ups", "ups:\n  rack: {driver: simulator}\nshutdown:\n  ups: [rakc]\n", []string{"currently.yaml:4:", `did you mean "rack"`}},
 		{"nothing triggers", "ups:\n  rack: {driver: simulator}\nshutdown:\n  when:\n    low_battery: false\n", []string{"nothing would trigger"}},
 		{"min supplies", "ups:\n  rack: {driver: simulator}\nshutdown:\n  min_supplies: 2\n", []string{"min_supplies"}},
 		{"short ups off delay", "ups:\n  rack: {driver: simulator}\nshutdown:\n  power_off_ups: true\n  ups_off_delay: 2s\n", []string{"at least 10s"}},
-		{"key typo", "shutdown:\n  when:\n    on_batery_for: 1m\n", []string{"nutng.yaml:3:", `did you mean "on_battery_for"`}},
+		{"key typo", "shutdown:\n  when:\n    on_batery_for: 1m\n", []string{"currently.yaml:3:", `did you mean "on_battery_for"`}},
 		{"no ups", "shutdown: {}\n", []string{"no UPS is configured"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := Parse("nutng.yaml", []byte(tt.src))
+			c, err := Parse("currently.yaml", []byte(tt.src))
 			if err == nil {
 				err = c.Validate(registry.Builtin())
 			}

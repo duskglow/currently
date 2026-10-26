@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // The tests use only fakes: fakeExec records commands and never runs them.

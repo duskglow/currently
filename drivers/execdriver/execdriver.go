@@ -34,11 +34,11 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 const (
-	// DriverName is the name used in `driver:` in nutng.yaml.
+	// DriverName is the name used in `driver:` in currently.yaml.
 	DriverName = "exec"
 	// Version of the driver.
 	Version = "0.1.0"
@@ -79,7 +79,7 @@ type Options struct {
 	Interval time.Duration `yaml:"interval"`
 	Timeout  time.Duration `yaml:"timeout"`
 	// Commands map instant command names to programs. The parameter, if
-	// any, is in the NUTNG_PARAM environment variable.
+	// any, is in the CURRENTLY_PARAM environment variable.
 	Commands map[string]Command `yaml:"commands"`
 }
 
@@ -314,7 +314,7 @@ func (d *device) RunCommand(ctx context.Context, name, param string) error {
 	ctx, cancel := context.WithTimeout(ctx, d.o.Timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, c[0], c[1:]...)
-	cmd.Env = append(os.Environ(), "NUTNG_PARAM="+param)
+	cmd.Env = append(os.Environ(), "CURRENTLY_PARAM="+param)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%s: %w: %s", name, err, strings.TrimSpace(string(out)))

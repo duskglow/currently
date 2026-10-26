@@ -1,16 +1,16 @@
 package daemon
 
 import (
-	"github.com/nut-ng/nut-ng/drivers/nutclient"
-	"github.com/nut-ng/nut-ng/internal/config"
-	"github.com/nut-ng/nut-ng/internal/policy"
+	"github.com/duskglow/currently/drivers/nutclient"
+	"github.com/duskglow/currently/internal/config"
+	"github.com/duskglow/currently/internal/policy"
 )
 
 // simulatedDrivers never trigger the built-in OS shutdown.
 var simulatedDrivers = map[string]bool{"simulator": true, "replay": true}
 
 // PolicyConfig turns the config's shutdown section into the engine's
-// config, or nil when there is none (nutng then never shuts down).
+// config, or nil when there is none (Currently then never shuts down).
 func PolicyConfig(cfg *config.Config) *policy.Config {
 	sd := cfg.Shutdown
 	if sd == nil {

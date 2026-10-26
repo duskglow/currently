@@ -1,17 +1,17 @@
 // Package plugin lets drivers and outputs run as separate executables, so
-// they can be added to nutng without rebuilding it.
+// they can be added to Currently without rebuilding it.
 //
-// A driver plugin is a program named nutng-driver-<name> whose main
-// function calls ServeDriver; an output plugin is named nutng-output-<name>
+// A driver plugin is a program named currently-driver-<name> whose main
+// function calls ServeDriver; an output plugin is named currently-output-<name>
 // and calls ServeOutput. Put the executable in a plugin directory (see
-// `nutng plugin list`) and nutng starts it. The implementation is the same
+// `currently plugin list`) and Currently starts it. The implementation is the same
 // sdk.Driver or sdk.Output interface the built-in drivers and outputs use.
 //
 //	func main() { plugin.ServeDriver(&myDriver{}) }
 //
-// Plugins in other languages speak the same gRPC protocol (proto/nutng/v1)
+// Plugins in other languages speak the same gRPC protocol (proto/currently/v1)
 // and the hashicorp/go-plugin handshake; see the Python SDK made by
-// `nutng plugin new --lang python`.
+// `currently plugin new --lang python`.
 package plugin
 
 import (
@@ -25,17 +25,17 @@ import (
 	goplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
-	nutngv1 "github.com/nut-ng/nut-ng/gen/nutng/v1"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	currentlyv1 "github.com/duskglow/currently/gen/currently/v1"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
-// Handshake is shared by nutng and its plugins. A plugin started by hand
+// Handshake is shared by Currently and its plugins. A plugin started by hand
 // (without the magic cookie in its environment) explains that it must be
-// started by nutng.
+// started by Currently.
 var Handshake = goplugin.HandshakeConfig{
 	ProtocolVersion:  sdk.ProtocolVersion,
-	MagicCookieKey:   "NUTNG_PLUGIN",
-	MagicCookieValue: "8c4a5d0e-nutng-plugin-v1",
+	MagicCookieKey:   "CURRENTLY_PLUGIN",
+	MagicCookieValue: "8c4a5d0e-currently-plugin-v1",
 }
 
 // Plugin set keys.
@@ -53,13 +53,13 @@ type DriverPlugin struct {
 
 // GRPCServer implements goplugin.GRPCPlugin.
 func (p *DriverPlugin) GRPCServer(_ *goplugin.GRPCBroker, s *grpc.Server) error {
-	nutngv1.RegisterDriverServiceServer(s, newDriverServer(p.Impl, Logger()))
+	currentlyv1.RegisterDriverServiceServer(s, newDriverServer(p.Impl, Logger()))
 	return nil
 }
 
 // GRPCClient implements goplugin.GRPCPlugin.
 func (p *DriverPlugin) GRPCClient(_ context.Context, _ *goplugin.GRPCBroker, c *grpc.ClientConn) (any, error) {
-	return nutngv1.NewDriverServiceClient(c), nil
+	return currentlyv1.NewDriverServiceClient(c), nil
 }
 
 // OutputPlugin connects an output over gRPC. Impl is set in the plugin
@@ -71,37 +71,37 @@ type OutputPlugin struct {
 
 // GRPCServer implements goplugin.GRPCPlugin.
 func (p *OutputPlugin) GRPCServer(_ *goplugin.GRPCBroker, s *grpc.Server) error {
-	nutngv1.RegisterOutputServiceServer(s, newOutputServer(p.Impl, Logger()))
+	currentlyv1.RegisterOutputServiceServer(s, newOutputServer(p.Impl, Logger()))
 	return nil
 }
 
 // GRPCClient implements goplugin.GRPCPlugin.
 func (p *OutputPlugin) GRPCClient(_ context.Context, _ *goplugin.GRPCBroker, c *grpc.ClientConn) (any, error) {
-	return nutngv1.NewOutputServiceClient(c), nil
+	return currentlyv1.NewOutputServiceClient(c), nil
 }
 
-// Set returns the plugin set nutng uses to talk to plugins.
+// Set returns the plugin set Currently uses to talk to plugins.
 func Set() goplugin.PluginSet {
 	return goplugin.PluginSet{KeyDriver: &DriverPlugin{}, KeyOutput: &OutputPlugin{}}
 }
 
-// ServeDriver runs a driver plugin until nutng stops it.
+// ServeDriver runs a driver plugin until Currently stops it.
 func ServeDriver(d sdk.Driver) {
 	serve(goplugin.PluginSet{KeyDriver: &DriverPlugin{Impl: d}})
 }
 
-// ServeOutput runs an output plugin until nutng stops it.
+// ServeOutput runs an output plugin until Currently stops it.
 func ServeOutput(o sdk.Output) {
 	serve(goplugin.PluginSet{KeyOutput: &OutputPlugin{Impl: o}})
 }
 
-// ParentPIDEnv carries nutng's process ID to its plugins, which exit when
-// nutng does (even if nutng is killed and cannot stop them).
-const ParentPIDEnv = "NUTNG_PARENT_PID"
+// ParentPIDEnv carries Currently's process ID to its plugins, which exit when
+// Currently does (even if Currently is killed and cannot stop them).
+const ParentPIDEnv = "CURRENTLY_PARENT_PID"
 
 func serve(set goplugin.PluginSet) {
 	if os.Getenv(Handshake.MagicCookieKey) != Handshake.MagicCookieValue {
-		os.Stderr.WriteString("This is a nutng plugin. Put it in a nutng plugin directory (see `nutng plugin list`); nutng starts it.\n")
+		os.Stderr.WriteString("This is a Currently plugin. Put it in a Currently plugin directory (see `currently plugin list`); Currently starts it.\n")
 		os.Exit(1)
 	}
 	if pid, err := strconv.Atoi(os.Getenv(ParentPIDEnv)); err == nil && pid > 0 {
@@ -118,7 +118,7 @@ func serve(set goplugin.PluginSet) {
 	})
 }
 
-// Logger returns a logger for plugin code. Its lines appear in nutng's log
+// Logger returns a logger for plugin code. Its lines appear in Currently's log
 // with their level and attributes.
 func Logger() *slog.Logger {
 	return slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
@@ -130,7 +130,7 @@ func Logger() *slog.Logger {
 			}
 			switch a.Key {
 			case slog.TimeKey:
-				// nutng stamps the line itself; go-plugin rejects lines
+				// Currently stamps the line itself; go-plugin rejects lines
 				// whose @timestamp is not in its exact layout.
 				return slog.Attr{}
 			case slog.MessageKey:

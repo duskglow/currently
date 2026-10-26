@@ -9,9 +9,9 @@ import (
 	"strings"
 	"sync"
 
-	nutngv1 "github.com/nut-ng/nut-ng/gen/nutng/v1"
-	"github.com/nut-ng/nut-ng/pkg/plugin"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	currentlyv1 "github.com/duskglow/currently/gen/currently/v1"
+	"github.com/duskglow/currently/pkg/plugin"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // Driver adapts a driver plugin to sdk.Driver.
@@ -31,7 +31,7 @@ func (d *Driver) Discover(ctx context.Context) ([]sdk.Discovered, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.DiscoverDevices(ctx, &nutngv1.DiscoverDevicesRequest{})
+	resp, err := c.DiscoverDevices(ctx, &currentlyv1.DiscoverDevicesRequest{})
 	if err != nil {
 		return nil, plugin.StatusToErr(err)
 	}
@@ -53,7 +53,7 @@ func (d *Driver) ValidateConfig(cfg sdk.Config) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.ValidateDriverConfig(context.Background(), &nutngv1.ValidateDriverConfigRequest{Config: pc})
+	resp, err := c.ValidateDriverConfig(context.Background(), &currentlyv1.ValidateDriverConfigRequest{Config: pc})
 	if err != nil {
 		return plugin.StatusToErr(err)
 	}
@@ -74,7 +74,7 @@ func (d *Driver) Open(ctx context.Context, cfg sdk.Config, log *slog.Logger) (sd
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.OpenDevice(ctx, &nutngv1.OpenDeviceRequest{Config: pc})
+	resp, err := c.OpenDevice(ctx, &currentlyv1.OpenDeviceRequest{Config: pc})
 	if err != nil {
 		err = plugin.StatusToErr(err)
 		d.p.recordError(err)
@@ -85,7 +85,7 @@ func (d *Driver) Open(ctx context.Context, cfg sdk.Config, log *slog.Logger) (sd
 }
 
 type device struct {
-	c        nutngv1.DriverServiceClient
+	c        currentlyv1.DriverServiceClient
 	id       string
 	commands []sdk.Command
 	writable []string
@@ -94,7 +94,7 @@ type device struct {
 }
 
 func (d *device) Watch(ctx context.Context, sink func(sdk.Update)) error {
-	stream, err := d.c.WatchDevice(ctx, &nutngv1.WatchDeviceRequest{DeviceId: d.id})
+	stream, err := d.c.WatchDevice(ctx, &currentlyv1.WatchDeviceRequest{DeviceId: d.id})
 	if err != nil {
 		return plugin.StatusToErr(err)
 	}
@@ -117,19 +117,19 @@ func (d *device) Commands() []sdk.Command { return d.commands }
 func (d *device) Writable() []string      { return d.writable }
 
 func (d *device) RunCommand(ctx context.Context, name, param string) error {
-	_, err := d.c.RunCommand(ctx, &nutngv1.RunCommandRequest{DeviceId: d.id, Command: name, Param: param})
+	_, err := d.c.RunCommand(ctx, &currentlyv1.RunCommandRequest{DeviceId: d.id, Command: name, Param: param})
 	return plugin.StatusToErr(err)
 }
 
 func (d *device) SetVar(ctx context.Context, name, value string) error {
-	_, err := d.c.SetVar(ctx, &nutngv1.SetVarRequest{DeviceId: d.id, Name: name, Value: value})
+	_, err := d.c.SetVar(ctx, &currentlyv1.SetVarRequest{DeviceId: d.id, Name: name, Value: value})
 	return plugin.StatusToErr(err)
 }
 
 func (d *device) Close() error {
 	var err error
 	d.once.Do(func() {
-		_, err = d.c.CloseDevice(context.Background(), &nutngv1.CloseDeviceRequest{DeviceId: d.id})
+		_, err = d.c.CloseDevice(context.Background(), &currentlyv1.CloseDeviceRequest{DeviceId: d.id})
 	})
 	return plugin.StatusToErr(err)
 }
@@ -155,7 +155,7 @@ func (o *Output) ValidateConfig(cfg sdk.Config) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.ValidateOutputConfig(context.Background(), &nutngv1.ValidateOutputConfigRequest{Config: pc})
+	resp, err := c.ValidateOutputConfig(context.Background(), &currentlyv1.ValidateOutputConfigRequest{Config: pc})
 	if err != nil {
 		return plugin.StatusToErr(err)
 	}
@@ -182,7 +182,7 @@ func (o *Output) Run(ctx context.Context, host sdk.Host, cfg sdk.Config, log *sl
 		return err
 	}
 	defer hs.stop()
-	_, err = c.RunOutput(ctx, &nutngv1.RunOutputRequest{Config: pc, HostAddress: hs.addr, HostToken: hs.token, AllowControl: allow})
+	_, err = c.RunOutput(ctx, &currentlyv1.RunOutputRequest{Config: pc, HostAddress: hs.addr, HostToken: hs.token, AllowControl: allow})
 	if ctx.Err() != nil {
 		return nil
 	}

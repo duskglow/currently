@@ -71,7 +71,7 @@ jobs:
           GOARM: "7"
         run: |
           export GOOS="${TARGET%/*}" GOARCH="${TARGET#*/}"
-          go build -o /dev/null ./cmd/nutng
+          go build -o /dev/null ./cmd/currently
 
   plugins:
     # Plugins as separate processes, including the Python SDK.
@@ -85,7 +85,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -r internal/scaffold/templates/python/requirements.txt
-      - run: NUTNG_TEST_PYTHON=$(which python) go test ./internal/plugins ./internal/scaffold ./plugins/...
+      - run: CURRENTLY_TEST_PYTHON=$(which python) go test ./internal/plugins ./internal/scaffold ./plugins/...
       - run: go build -o /dev/null ./plugins/mqtt
 
   generated:
@@ -106,7 +106,7 @@ jobs:
   nut-integration:
     # Against the real NUT: upsc/upscmd/upsrw/upsmon clients, and a
     # cross-machine shutdown rehearsal with upsmon and upsd. Shutdown
-    # commands only write marker files, and NUTNG_NEVER_SHUTDOWN is set.
+    # commands only write marker files, and CURRENTLY_NEVER_SHUTDOWN is set.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -114,9 +114,9 @@ jobs:
         with:
           go-version-file: go.mod
       - run: sudo apt-get update && sudo apt-get install -y nut-client nut-server
-      - run: go build -o nutng ./cmd/nutng
-      - run: bash test/integration/nut-clients.sh ./nutng
-      - run: bash test/integration/shutdown.sh ./nutng
+      - run: go build -o currently ./cmd/currently
+      - run: bash test/integration/nut-clients.sh ./currently
+      - run: bash test/integration/shutdown.sh ./currently
 
   snmp-integration:
     # The SNMP agent against net-snmp's snmpget/snmpwalk and snmptrapd.
@@ -127,8 +127,8 @@ jobs:
         with:
           go-version-file: go.mod
       - run: sudo apt-get update && sudo apt-get install -y snmp snmptrapd
-      - run: go build -o nutng ./cmd/nutng
-      - run: bash test/integration/snmp.sh ./nutng
+      - run: go build -o currently ./cmd/currently
+      - run: bash test/integration/snmp.sh ./currently
 
   packaging:
     # A snapshot release (archives and Linux packages), then the .deb
@@ -147,15 +147,15 @@ jobs:
           args: release --snapshot --clean --skip=docker,sign,sbom
       - name: Install the .deb
         run: |
-          sudo mkdir -p /etc/nutng
-          printf 'ups:\n  sim: {driver: simulator}\nlisten:\n  snmp: 127.0.0.1:1161\n' | sudo tee /etc/nutng/nutng.yaml
-          sudo dpkg -i dist/nutng_*_linux_amd64.deb
+          sudo mkdir -p /etc/currently
+          printf 'ups:\n  sim: {driver: simulator}\nlisten:\n  snmp: 127.0.0.1:1161\n' | sudo tee /etc/currently/currently.yaml
+          sudo dpkg -i dist/currently_*_linux_amd64.deb
           sleep 3
-          systemctl is-active nutng
-          nutng status
-          nutng plugin list | grep mqtt
-          sudo dpkg -r nutng
-          ! systemctl is-active nutng
+          systemctl is-active currently
+          currently status
+          currently plugin list | grep mqtt
+          sudo dpkg -r currently
+          ! systemctl is-active currently
       - uses: actions/upload-artifact@v4
         with:
           name: snapshot
@@ -173,7 +173,7 @@ jobs:
       - shell: pwsh
         run: |
           Expand-Archive (Get-ChildItem dist\*_windows_amd64.zip).FullName -DestinationPath dist\win
-          packaging/windows/build-msi.ps1 -Version 0.0.1 -BinDir dist/win -Out dist/nutng.msi
+          packaging/windows/build-msi.ps1 -Version 0.0.1 -BinDir dist/win -Out dist/currently.msi
 
   lint:
     runs-on: ubuntu-latest

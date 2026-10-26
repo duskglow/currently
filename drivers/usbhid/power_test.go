@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // Power commands are tested only against the fake device; nothing here

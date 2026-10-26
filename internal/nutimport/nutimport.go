@@ -1,5 +1,5 @@
 // Package nutimport converts a NUT configuration (ups.conf, upsd.conf,
-// upsd.users, upsmon.conf) into a nutng.yaml.
+// upsd.users, upsmon.conf) into a currently.yaml.
 package nutimport
 
 import (
@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nut-ng/nut-ng/internal/nutwire"
+	"github.com/duskglow/currently/internal/nutwire"
 )
 
 // Result is the converted configuration.
 type Result struct {
-	// YAML is the nutng.yaml text.
+	// YAML is the currently.yaml text.
 	YAML string
 	// Notes explain what was converted, skipped or needs attention.
 	Notes []string
@@ -163,7 +163,7 @@ func Convert(dir string) (*Result, error) {
 			}
 		}
 		if len(listen) > 1 {
-			note("upsd.conf: upsd listened on %s; nutng listens on one address, so it uses %s (\":3493\" listens on all)", strings.Join(listen, ", "), listen[0])
+			note("upsd.conf: upsd listened on %s; Currently listens on one address, so it uses %s (\":3493\" listens on all)", strings.Join(listen, ", "), listen[0])
 		}
 	}
 
@@ -177,7 +177,7 @@ func Convert(dir string) (*Result, error) {
 		for _, s := range sections {
 			role := userRole(s.keys)
 			if role == "" {
-				note("upsd.users [%s]: skipped: no upsmon, actions or instcmds, so it could only read, which needs no login in nutng", s.name)
+				note("upsd.users [%s]: skipped: no upsmon, actions or instcmds, so it could only read, which needs no login in Currently", s.name)
 				continue
 			}
 			users = append(users, userBlock{s.name, s.keys["password"], role})
@@ -234,17 +234,17 @@ func Convert(dir string) (*Result, error) {
 			case "DEADTIME":
 				shutdown = append(shutdown, [2]string{"dead_time", seconds(arg(d))})
 			case "POWERDOWNFLAG":
-				note("upsmon.conf: POWERDOWNFLAG was set, so NUT told the UPS to cut power at the end of the shutdown; in nutng, set shutdown.power_off_ups: true for that")
+				note("upsmon.conf: POWERDOWNFLAG was set, so NUT told the UPS to cut power at the end of the shutdown; in Currently, set shutdown.power_off_ups: true for that")
 			case "NOTIFYCMD", "NOTIFYFLAG", "NOTIFYMSG":
 				if d[0] == "NOTIFYCMD" {
-					note("upsmon.conf: NOTIFYCMD is not converted; notifications come in a later nutng version (the REST event stream has every event now)")
+					note("upsmon.conf: NOTIFYCMD is not converted; notifications come in a later Currently version (the REST event stream has every event now)")
 				}
 			}
 		}
 	}
 
 	if len(upses) == 0 {
-		return nil, errors.New("found no UPS that nutng can use")
+		return nil, errors.New("found no UPS that Currently can use")
 	}
 	if monitorOnly > 0 {
 		note("upsmon.conf: %d UPS(es) had power value 0 (monitor only); they are kept, but do not count toward shutting down", monitorOnly)
@@ -252,9 +252,9 @@ func Convert(dir string) (*Result, error) {
 
 	// Render.
 	var b strings.Builder
-	fmt.Fprintf(&b, "# nutng configuration converted from the NUT configuration in %s\n", dir)
-	fmt.Fprintf(&b, "# on %s by `nutng import-nut`. Check it with `nutng config validate`\n", time.Now().Format("2006-01-02"))
-	b.WriteString("# and `nutng test shutdown`.\n\nups:\n")
+	fmt.Fprintf(&b, "# currently configuration converted from the NUT configuration in %s\n", dir)
+	fmt.Fprintf(&b, "# on %s by `currently import-nut`. Check it with `currently config validate`\n", time.Now().Format("2006-01-02"))
+	b.WriteString("# and `currently test shutdown`.\n\nups:\n")
 	for _, u := range upses {
 		if u.comment != "" {
 			fmt.Fprintf(&b, "  # %s\n", u.comment)
@@ -272,7 +272,7 @@ func Convert(dir string) (*Result, error) {
 	fmt.Fprintf(&b, "  nut: %q\n", nut)
 	if len(users) > 0 {
 		b.WriteString("\n# NUT client accounts, from upsd.users. Consider moving the passwords to\n")
-		b.WriteString("# environment variables (password_env) or /etc/default/nutng.\nusers:\n")
+		b.WriteString("# environment variables (password_env) or /etc/default/currently.\nusers:\n")
 		for _, u := range users {
 			fmt.Fprintf(&b, "  %s:\n    password: %s\n    role: %s\n", yamlKey(u.name), strconv.Quote(u.password), u.role)
 		}
@@ -288,7 +288,7 @@ func Convert(dir string) (*Result, error) {
 			fmt.Fprintf(&b, "  %s: %s\n", kv[0], kv[1])
 		}
 	} else {
-		b.WriteString("\n# upsmon.conf had no MONITOR line with a power value, so nutng only monitors.\n")
+		b.WriteString("\n# upsmon.conf had no MONITOR line with a power value, so Currently only monitors.\n")
 		note("no shutdown section: upsmon.conf did not say which UPS powers this computer")
 	}
 	res.YAML = b.String()
@@ -329,7 +329,7 @@ func convertUPS(s *section) (*upsBlock, string) {
 	case "":
 		return nil, "no driver set"
 	}
-	return nil, fmt.Sprintf("driver %s is not supported by nutng yet (USB HID UPSes are; serial and SNMP drivers come later)", k["driver"])
+	return nil, fmt.Sprintf("driver %s is not supported by Currently yet (USB HID UPSes are; serial and SNMP drivers come later)", k["driver"])
 }
 
 func userRole(k map[string]string) string {

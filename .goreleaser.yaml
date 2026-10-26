@@ -1,4 +1,4 @@
-# GoReleaser config for nutng releases: archives for every platform,
+# GoReleaser config for Currently releases: archives for every platform,
 # Linux packages (deb, rpm, apk, Arch), a multi-arch container image,
 # Homebrew and winget manifests, checksums, SBOMs and cosign signatures.
 # The Windows MSI and FreeBSD package are built by the release workflow
@@ -9,13 +9,13 @@
 #
 # Releases run from .github/workflows/release.yml when a v* tag is pushed.
 version: 2
-project_name: nutng
+project_name: currently
 
 builds:
   - &build
-    id: nutng
-    main: ./cmd/nutng
-    binary: nutng
+    id: currently
+    main: ./cmd/currently
+    binary: currently
     env: [CGO_ENABLED=0]
     goos: [linux, windows, darwin, freebsd]
     goarch: [amd64, arm64, arm]
@@ -26,19 +26,19 @@ builds:
       - { goos: freebsd, goarch: arm }
     flags: [-trimpath]
     ldflags:
-      - -s -w -X github.com/nut-ng/nut-ng/internal/version.Version={{ .Version }}
+      - -s -w -X github.com/duskglow/currently/internal/version.Version={{ .Version }}
     mod_timestamp: "{{ .CommitTimestamp }}"
   - <<: *build
     id: mqtt
     main: ./plugins/mqtt
-    # Plugins live in plugins/ next to the nutng executable.
-    binary: plugins/nutng-output-mqtt
+    # Plugins live in plugins/ next to the Currently executable.
+    binary: plugins/currently-output-mqtt
     ldflags:
       - -s -w
 
 archives:
   - id: default
-    ids: [nutng, mqtt]
+    ids: [currently, mqtt]
     formats: [tar.gz]
     format_overrides:
       - { goos: windows, formats: [zip] }
@@ -46,7 +46,7 @@ archives:
     files:
       - LICENSE
       - README.md
-      - nutng.example.yaml
+      - currently.example.yaml
       - src: packaging/linux/*
         dst: packaging/linux
       - src: packaging/freebsd/*
@@ -56,54 +56,54 @@ archives:
 
 nfpms:
   - id: packages
-    ids: [nutng, mqtt]
-    package_name: nutng
-    vendor: nut-ng
-    homepage: https://github.com/nut-ng/nut-ng
+    ids: [currently, mqtt]
+    package_name: currently
+    vendor: Currently
+    homepage: https://github.com/duskglow/currently
     maintainer: Russell Miller <rmiller@duskglow.com>
     description: |-
       Easy UPS monitor and shutdown daemon.
-      nut-ng monitors UPSes over USB and other drivers, shuts computers down
+      Currently monitors UPSes over USB and other drivers, shuts computers down
       safely on power failure, and serves UPS state over the NUT protocol,
       SNMP (UPS-MIB), Prometheus and a REST API.
     license: Apache-2.0
     section: admin
     formats: [deb, rpm, apk, archlinux]
-    # The binaries go to /usr/lib/nutng (nutng finds plugins in plugins/
-    # next to itself), with /usr/bin/nutng linking to it.
-    bindir: /usr/lib/nutng
+    # The binaries go to /usr/lib/currently (Currently finds plugins in plugins/
+    # next to itself), with /usr/bin/currently linking to it.
+    bindir: /usr/lib/currently
     contents:
-      - src: /usr/lib/nutng/nutng
-        dst: /usr/bin/nutng
+      - src: /usr/lib/currently/currently
+        dst: /usr/bin/currently
         type: symlink
-      - src: packaging/linux/nutng.service
-        dst: /usr/lib/systemd/system/nutng.service
+      - src: packaging/linux/currently.service
+        dst: /usr/lib/systemd/system/currently.service
         file_info: { mode: 0644 }
-      - src: packaging/linux/nutng.openrc
-        dst: /etc/init.d/nutng
+      - src: packaging/linux/currently.openrc
+        dst: /etc/init.d/currently
         packager: apk
         file_info: { mode: 0755 }
-      - src: packaging/linux/90-nutng-ups.rules
-        dst: /usr/lib/udev/rules.d/90-nutng-ups.rules
+      - src: packaging/linux/90-currently-ups.rules
+        dst: /usr/lib/udev/rules.d/90-currently-ups.rules
         file_info: { mode: 0644 }
-      - src: packaging/linux/nutng.default
-        dst: /etc/default/nutng
+      - src: packaging/linux/currently.default
+        dst: /etc/default/currently
         type: config|noreplace
         file_info: { mode: 0600 }
-      - dst: /etc/nutng
+      - dst: /etc/currently
         type: dir
         file_info: { mode: 0755 }
-      - dst: /etc/nutng/plugins.d
+      - dst: /etc/currently/plugins.d
         type: dir
         file_info: { mode: 0755 }
-      - src: nutng.example.yaml
-        dst: /usr/share/doc/nutng/nutng.example.yaml
+      - src: currently.example.yaml
+        dst: /usr/share/doc/currently/currently.example.yaml
         file_info: { mode: 0644 }
       - src: README.md
-        dst: /usr/share/doc/nutng/README.md
+        dst: /usr/share/doc/currently/README.md
         file_info: { mode: 0644 }
       - src: LICENSE
-        dst: /usr/share/doc/nutng/LICENSE
+        dst: /usr/share/doc/currently/LICENSE
         file_info: { mode: 0644 }
     scripts:
       postinstall: packaging/linux/postinstall.sh
@@ -113,7 +113,7 @@ nfpms:
       group: Applications/System
     deb:
       fields:
-        Bugs: https://github.com/nut-ng/nut-ng/issues
+        Bugs: https://github.com/duskglow/currently/issues
     overrides:
       deb:
         recommends: [udev]
@@ -127,7 +127,7 @@ sboms:
 signs:
   # Keyless signing with the workflow's OIDC identity; verify with
   #   cosign verify-blob --bundle checksums.txt.sigstore.json \
-  #     --certificate-identity-regexp 'github.com/nut-ng/nut-ng' \
+  #     --certificate-identity-regexp 'github.com/duskglow/currently' \
   #     --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt
   - cmd: cosign
     artifacts: checksum
@@ -136,50 +136,50 @@ signs:
 
 dockers_v2:
   - id: image
-    ids: [nutng, mqtt]
+    ids: [currently, mqtt]
     dockerfile: packaging/docker/Dockerfile
-    images: [ghcr.io/nut-ng/nutng]
+    images: [ghcr.io/duskglow/currently]
     tags:
       - "{{ .Version }}"
       - "{{ if not .Prerelease }}latest{{ end }}"
     platforms: [linux/amd64, linux/arm64, linux/arm/v7]
     labels:
-      org.opencontainers.image.source: https://github.com/nut-ng/nut-ng
+      org.opencontainers.image.source: https://github.com/duskglow/currently
       org.opencontainers.image.version: "{{ .Version }}"
-      org.opencontainers.image.description: nut-ng UPS monitor
+      org.opencontainers.image.description: Currently UPS monitor
 
 homebrew_casks:
-  - name: nutng
+  - name: currently
     ids: [default]
-    binaries: [nutng]
-    homepage: https://github.com/nut-ng/nut-ng
+    binaries: [currently]
+    homepage: https://github.com/duskglow/currently
     description: Easy UPS monitor that serves NUT, SNMP, Prometheus and REST
     repository:
-      owner: nut-ng
+      owner: duskglow
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     skip_upload: auto
     caveats: |
-      Set nutng up and run it as a service:
-        sudo nutng init
-        sudo nutng service install && sudo nutng service start
+      Set Currently up and run it as a service:
+        sudo currently init
+        sudo currently service install && sudo currently service start
       The binary is not notarized yet; if macOS refuses to run it:
-        xattr -dr com.apple.quarantine "$(brew --prefix)/bin/nutng"
+        xattr -dr com.apple.quarantine "$(brew --prefix)/bin/currently"
 
 winget:
-  - name: nut-ng
-    package_identifier: nut-ng.nutng
-    publisher: nut-ng
+  - name: Currently
+    package_identifier: duskglow.Currently
+    publisher: duskglow
     short_description: Easy UPS monitor that serves NUT, SNMP, Prometheus and REST
     license: Apache-2.0
-    license_url: https://github.com/nut-ng/nut-ng/blob/main/LICENSE
-    homepage: https://github.com/nut-ng/nut-ng
+    license_url: https://github.com/duskglow/currently/blob/main/LICENSE
+    homepage: https://github.com/duskglow/currently
     ids: [default]
     skip_upload: auto
     repository:
-      owner: nut-ng
+      owner: duskglow
       name: winget-pkgs
-      branch: "nutng-{{ .Version }}"
+      branch: "currently-{{ .Version }}"
       token: "{{ .Env.WINGET_TOKEN }}"
       pull_request:
         enabled: true
@@ -198,6 +198,6 @@ changelog:
 
 release:
   github:
-    owner: nut-ng
-    name: nut-ng
+    owner: duskglow
+    name: currently
   prerelease: auto

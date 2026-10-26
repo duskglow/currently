@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
-  title: nut-ng REST API
+  title: Currently REST API
   version: v1
   description: |
-    UPS state from nut-ng. Read endpoints are open to anyone who can reach
+    UPS state from Currently. Read endpoints are open to anyone who can reach
     the listen address. Commands and variable changes need a bearer token
-    (api.token or api.token_env in nutng.yaml); without one they are refused
-    over the network and only allowed through the local nutng CLI.
+    (api.token or api.token_env in currently.yaml); without one they are refused
+    over the network and only allowed through the local currently CLI.
 servers:
   - url: http://127.0.0.1:9300
 paths:

@@ -1,13 +1,13 @@
 # UPS drivers
 
 A driver reads one UPS. Pick it with `driver:` in each `ups:` entry; the
-other keys in the entry are the driver's options. `nutng plugin list`
+other keys in the entry are the driver's options. `currently plugin list`
 shows driver plugins as well.
 
 ## `usbhid` (default)
 
 USB UPSes that follow the HID Power Device class: most APC, CyberPower,
-Eaton, Tripp Lite and similar units. nutng uses the operating system's own
+Eaton, Tripp Lite and similar units. Currently uses the operating system's own
 HID driver, so nothing needs installing or replacing; see
 [Platforms](platforms.md).
 
@@ -18,20 +18,20 @@ HID driver, so nothing needs installing or replacing; see
 | `vendor`, `product` | Or by name |
 | `path` | Or by OS device path (`/dev/hidraw0`) |
 | `interval` | How often to read it (default `2s`) |
-| `quirks_dir` | Extra mappings (default `quirks.d/` next to `nutng.yaml`) |
+| `quirks_dir` | Extra mappings (default `quirks.d/` next to `currently.yaml`) |
 
-With one UPS, none are needed. `nutng detect` prints the options that
+With one UPS, none are needed. `currently detect` prints the options that
 select each UPS it finds.
 
 **Mappings.** Which HID field becomes which NUT variable is described in
-YAML files ([drivers/usbhid/quirks](https://github.com/nut-ng/nut-ng/tree/main/drivers/usbhid/quirks)).
+YAML files ([drivers/usbhid/quirks](https://github.com/duskglow/currently/tree/main/drivers/usbhid/quirks)).
 To fix or extend them for your model without rebuilding, put a file in
 `quirks.d/`.
 
 **Captures.** When a UPS shows wrong or missing values, record it:
 
 ```sh
-nutng debug capture     # writes nutng-capture-<vendor>-<product>-<time>.json
+currently debug capture     # writes currently-capture-<vendor>-<product>-<time>.json
 ```
 
 The file lists every field the UPS reports, with the serial number removed.
@@ -41,12 +41,12 @@ Attach it to a bug report, or play it back with the `replay` driver:
 ups:
   lab:
     driver: replay
-    file: nutng-capture-0764-0601-20261025-235000.json
+    file: currently-capture-0764-0601-20261025-235000.json
 ```
 
 ## `nut`
 
-A UPS served by another nutng or by NUT's upsd. This is how a
+A UPS served by another Currently or by NUT's upsd. This is how a
 [secondary](shutdown.md#primary-and-secondaries) follows its primary.
 
 | Option | Meaning |
@@ -78,11 +78,11 @@ ups:
 | `command` | A command line, or a list of arguments |
 | `mode` | `poll` (run every interval; default) or `stream` (keeps running; one reading per JSON line or blank-line-separated block) |
 | `interval`, `timeout` | Polling (defaults `5s`, `10s`) |
-| `commands` | Instant commands; the parameter is in `NUTNG_PARAM` |
+| `commands` | Instant commands; the parameter is in `CURRENTLY_PARAM` |
 
 ## `simulator`
 
-A simulated UPS for trying nutng out and for rehearsals. It never shuts
+A simulated UPS for trying Currently out and for rehearsals. It never shuts
 the computer down.
 
 | Option | Meaning |
@@ -94,5 +94,5 @@ the computer down.
 
 ## `replay`
 
-Plays back a `nutng debug capture` file, mapped exactly as the real UPS
+Plays back a `currently debug capture` file, mapped exactly as the real UPS
 would be. Like the simulator, it never shuts the computer down.

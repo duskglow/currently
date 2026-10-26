@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/nut-ng/nut-ng/drivers/usbhid/hid"
+	"github.com/duskglow/currently/drivers/usbhid/hid"
 )
 
 // The Windows transport uses the HID class driver through hid.dll, so no

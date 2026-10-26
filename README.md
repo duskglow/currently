@@ -1,11 +1,14 @@
-# nut-ng
+# Currently
+
+What's your UPS doing? **Currently** knows.
 
 UPS monitoring that is easy to set up. One self-contained binary, one short
 config file, clear error messages, and an API that monitoring tools can
-query.
+query. It speaks NUT's protocol, so NUT clients work with it unchanged.
+(The project was called nut-ng until October 2026.)
 
 > **Status:** early development (milestone 6 of 7). USB UPSes work on
-> Linux, Windows, macOS and FreeBSD. nutng shuts computers down safely (as
+> Linux, Windows, macOS and FreeBSD. Currently shuts computers down safely (as
 > primary or secondary, and alongside NUT's upsmon and upsd), serves the
 > NUT protocol, SNMP (UPS-MIB), Prometheus metrics, MQTT and a REST API,
 > installs itself as a service, and takes driver and output plugins. See
@@ -18,77 +21,77 @@ winget, Homebrew, FreeBSD pkg, or a container image; see
 [Install](docs/install.md)), or build it (Go 1.26 or newer):
 
 ```sh
-go build -o bin/nutng ./cmd/nutng
+go build -o bin/currently ./cmd/currently
 ```
 
 Plug in the UPS's USB cable, then:
 
 ```sh
-nutng detect    # list the UPSes nutng can see
-nutng init      # pick one, name it, and write nutng.yaml
-nutng serve     # run the daemon
+currently detect    # list the UPSes currently can see
+currently init      # pick one, name it, and write currently.yaml
+currently serve     # run the daemon
 ```
 
-Without a config file, `nutng serve` monitors every USB UPS it finds. To
+Without a config file, `currently serve` monitors every USB UPS it finds. To
 run it at boot, install it as a service (as root, or in an Administrator
 terminal on Windows):
 
 ```sh
-nutng service install    # also: start, stop, restart, status, uninstall
-nutng doctor             # check the whole setup, with fixes for problems
+currently service install    # also: start, stop, restart, status, uninstall
+currently doctor             # check the whole setup, with fixes for problems
 ```
 
 In another terminal:
 
 ```sh
-nutng status                     # summary, or detail when there is one UPS
-nutng watch                      # live view with recent events
-nutng vars cyberpower            # every variable the UPS reports
-nutng cmd cyberpower             # list the commands it accepts
-nutng cmd cyberpower beeper.disable
-nutng set cyberpower battery.charge.low 20
+currently status                     # summary, or detail when there is one UPS
+currently watch                      # live view with recent events
+currently vars cyberpower            # every variable the UPS reports
+currently cmd cyberpower             # list the commands it accepts
+currently cmd cyberpower beeper.disable
+currently set cyberpower battery.charge.low 20
 ```
 
-No UPS at hand? `nutng serve --demo` adds a simulated one whose mains power
-fails for one minute every three minutes; `nutng cmd demo sim.power.fail`
+No UPS at hand? `currently serve --demo` adds a simulated one whose mains power
+fails for one minute every three minutes; `currently cmd demo sim.power.fail`
 rehearses an outage.
 
-Moving from NUT? `nutng import-nut` converts `/etc/nut` (ups.conf,
-upsd.conf, upsd.users, upsmon.conf) into a nutng.yaml and lists anything it
+Moving from NUT? `currently import-nut` converts `/etc/nut` (ups.conf,
+upsd.conf, upsd.users, upsmon.conf) into a currently.yaml and lists anything it
 could not convert.
 
 ## Plugins
 
 Drivers (new kinds of UPS) and outputs (new places to send UPS data) can
-be added without rebuilding nutng. A plugin is an executable named
-`nutng-driver-<name>` or `nutng-output-<name>` in a plugin directory, or a
-command listed in nutng.yaml for interpreted languages:
+be added without rebuilding Currently. A plugin is an executable named
+`currently-driver-<name>` or `currently-output-<name>` in a plugin directory, or a
+command listed in currently.yaml for interpreted languages:
 
 ```sh
-nutng plugin list          # installed plugins, and the directories searched
-nutng plugin info mqtt
+currently plugin list          # installed plugins, and the directories searched
+currently plugin info mqtt
 ```
 
 ```yaml
 plugins:
-  dirs: [/opt/nutng/plugins]             # searched before the defaults
+  dirs: [/opt/currently/plugins]             # searched before the defaults
   commands:                              # plugins that need an interpreter
-    - ["python3", "/opt/nutng/myups/plugin.py"]
+    - ["python3", "/opt/currently/myups/plugin.py"]
 ```
 
-nutng restarts a plugin that crashes, stops plugins the config does not
-use, and plugins exit when nutng does.
+Currently restarts a plugin that crashes, stops plugins the config does not
+use, and plugins exit when Currently does.
 
-**MQTT** (`plugins/mqtt`, built as `nutng-output-mqtt`) publishes each UPS's
+**MQTT** (`plugins/mqtt`, built as `currently-output-mqtt`) publishes each UPS's
 state and events, with Home Assistant discovery:
 
 ```yaml
 outputs:
   mqtt:
     broker: tcp://192.168.1.5:1883
-    username: nutng
-    password_env: NUTNG_MQTT_PASSWORD
-    allow_control: true      # accept commands on nutng/<ups>/command/<name>
+    username: currently
+    password_env: CURRENTLY_MQTT_PASSWORD
+    allow_control: true      # accept commands on currently/<ups>/command/<name>
 ```
 
 Outputs can only read unless `allow_control: true`.
@@ -105,17 +108,17 @@ ups:
     interval: 10s
 ```
 
-**Writing a plugin.** `nutng plugin new driver|output <name>` creates a Go
+**Writing a plugin.** `currently plugin new driver|output <name>` creates a Go
 or Python (`--lang python`) project to start from. Go plugins implement the
 same `sdk.Driver` / `sdk.Output` interfaces as the built-in ones
 ([pkg/sdk](pkg/sdk)) and call `plugin.ServeDriver` / `plugin.ServeOutput`
 ([pkg/plugin](pkg/plugin)). Other languages speak the gRPC protocol in
-[proto/nutng/v1](proto/nutng/v1). See
+[proto/currently/v1](proto/currently/v1). See
 [examples/plugins/python-driver](examples/plugins/python-driver).
 
 ## Shutting down
 
-nutng shuts this computer down when the UPS is about to run out, as NUT's
+Currently shuts this computer down when the UPS is about to run out, as NUT's
 upsmon does. Without a `shutdown` section it only monitors.
 
 ```yaml
@@ -129,12 +132,12 @@ shutdown:
 ```
 
 ```sh
-nutng test shutdown   # the policy, how each UPS looks to it now, and every step (does nothing)
+currently test shutdown   # the policy, how each UPS looks to it now, and every step (does nothing)
 ```
 
 **Primary and secondaries.** The computer the UPS is plugged into is its
 *primary*. Other computers on the same UPS follow it as *secondaries*,
-either with NUT's upsmon or with nutng's `nut` driver, which also follows
+either with NUT's upsmon or with Currently's `nut` driver, which also follows
 NUT's own upsd:
 
 ```yaml
@@ -142,10 +145,10 @@ NUT's own upsd:
 ups:
   rack:
     driver: nut
-    host: 192.168.1.10       # the primary (nutng or NUT upsd)
+    host: 192.168.1.10       # the primary (currently or NUT upsd)
     ups: rack
     username: mon            # a secondary user there, so the primary waits for us
-    password_env: NUTNG_MON_PASSWORD
+    password_env: CURRENTLY_MON_PASSWORD
 shutdown: {}                 # follow the primary's FSD, or low battery
 ```
 
@@ -161,10 +164,10 @@ it when mains returns, so everything boots again by itself.
 - A simulated UPS (`simulator`, `replay`) never shuts the computer down:
   its outages only act on simulated UPSes, unless you set a custom
   `shutdown.command`.
-- `NUTNG_NEVER_SHUTDOWN=1` in the environment blocks the operating
+- `CURRENTLY_NEVER_SHUTDOWN=1` in the environment blocks the operating
   system's shutdown command (a custom `shutdown.command` still runs, so
   point it at something harmless).
-- Every policy decision and step appears in `nutng watch`, the log, and
+- Every policy decision and step appears in `currently watch`, the log, and
   `GET /api/v1/shutdown`.
 
 ### USB UPS support
@@ -174,9 +177,9 @@ most APC, CyberPower, Eaton, Tripp Lite and similar units. It uses the
 operating system's own HID driver:
 
 - **Windows:** nothing to install, and no driver replacement (libusb, Zadig).
-  Windows keeps showing the UPS as a battery while nutng reads it.
-- **Linux:** uses hidraw. To run nutng as a regular user, install
-  [packaging/linux/90-nutng-ups.rules](packaging/linux/90-nutng-ups.rules).
+  Windows keeps showing the UPS as a battery while Currently reads it.
+- **Linux:** uses hidraw. To run Currently as a regular user, install
+  [packaging/linux/90-currently-ups.rules](packaging/linux/90-currently-ups.rules).
 - **macOS:** uses IOKit without seizing the UPS, so macOS's own UPS
   support keeps working. No cgo or extra libraries.
 - **FreeBSD:** uses uhid(4) or hidraw(4).
@@ -189,7 +192,7 @@ units yet. See [Platforms](docs/platforms.md).
 When a UPS shows wrong or missing values, record it:
 
 ```sh
-nutng debug capture            # writes nutng-capture-<vendor>-<product>-<time>.json
+currently debug capture            # writes currently-capture-<vendor>-<product>-<time>.json
 ```
 
 The file lists every field the UPS reports, with the serial number removed.
@@ -199,22 +202,22 @@ Attach it to a bug report, or play it back without the hardware:
 ups:
   lab:
     driver: replay
-    file: nutng-capture-0764-0601-20261025-235000.json
+    file: currently-capture-0764-0601-20261025-235000.json
 ```
 
 Field-to-variable mappings live in YAML
 ([drivers/usbhid/quirks](drivers/usbhid/quirks)). To fix or extend them for
 your model without rebuilding, put a file in `quirks.d/` next to your
-`nutng.yaml`.
+`currently.yaml`.
 
 ## Monitoring tools
 
-nutng speaks four protocols. All listen on this machine only until you
+Currently speaks four protocols. All listen on this machine only until you
 change the addresses under `listen:` (for example `nut: ":3493"`). See
 [Monitoring tools](docs/outputs/index.md).
 
 **NUT protocol** (port 3493): anything that works with NUT's upsd works
-with nutng: `upsc`, `upsmon`, Home Assistant's NUT integration, Synology
+with Currently: `upsc`, `upsmon`, Home Assistant's NUT integration, Synology
 and QNAP NAS "network UPS" settings, and Nagios/Icinga `check_ups`. It is
 tested against the real NUT 2.8 clients, including `upsmon` primary and
 secondary through a power failure
@@ -229,7 +232,7 @@ Reading needs no login. upsmon and commands need a user:
 ```yaml
 users:
   upsmon:                       # for MONITOR lines in upsmon.conf
-    password_env: NUTNG_UPSMON_PASSWORD
+    password_env: CURRENTLY_UPSMON_PASSWORD
     role: primary               # secondary: watch only; primary: may set FSD
   admin:
     password: change-me
@@ -237,7 +240,7 @@ users:
 ```
 
 **SNMP** (UPS-MIB, RFC 1628): LibreNMS, Zabbix, PRTG, Observium and other
-network monitors poll nutng like a UPS network card. v1, v2c and v3 (SHA-2
+network monitors poll Currently like a UPS network card. v1, v2c and v3 (SHA-2
 authentication, AES privacy), with v2c traps on power events. Tested
 against net-snmp's tools and snmptrapd
 ([test/integration/snmp.sh](test/integration/snmp.sh)).
@@ -248,7 +251,7 @@ listen:
     addr: ":1161"
     community: my-community      # extra UPSes: my-community@<ups>, or the v3 context
     users:
-      monitor: {auth: sha256, auth_password_env: NUTNG_SNMP_AUTH, privacy: aes, privacy_password_env: NUTNG_SNMP_PRIV}
+      monitor: {auth: sha256, auth_password_env: CURRENTLY_SNMP_AUTH, privacy: aes, privacy_password_env: CURRENTLY_SNMP_PRIV}
     traps: [{target: librenms.example.com}]
 ```
 
@@ -257,8 +260,8 @@ snmpwalk -v2c -c my-community localhost:1161 1.3.6.1.2.1.33
 ```
 
 **Prometheus**: metrics are at `http://127.0.0.1:9300/metrics`, for
-example `nutng_battery_charge_percent`, `nutng_battery_runtime_seconds`,
-`nutng_ups_status{flag="OB"}` and `nutng_ups_up`.
+example `currently_battery_charge_percent`, `currently_battery_runtime_seconds`,
+`currently_ups_status{flag="OB"}` and `currently_ups_up`.
 
 **REST API**: read-only over the network unless you set a token:
 
@@ -272,43 +275,43 @@ The full API is described at `/api/v1/openapi.yaml`.
 
 ## Configuration
 
-To configure nutng, run `nutng init` or create `nutng.yaml` yourself
-(`/etc/nutng/nutng.yaml` on Linux, `C:\ProgramData\nutng\nutng.yaml` on
-Windows, `/usr/local/etc/nutng/nutng.yaml` on macOS and FreeBSD, or pass
-`--config`). See [nutng.example.yaml](nutng.example.yaml).
+To configure Currently, run `currently init` or create `currently.yaml` yourself
+(`/etc/currently/currently.yaml` on Linux, `C:\ProgramData\currently\currently.yaml` on
+Windows, `/usr/local/etc/currently/currently.yaml` on macOS and FreeBSD, or pass
+`--config`). See [currently.example.yaml](currently.example.yaml).
 
 ```sh
-nutng config validate   # check it without starting anything
-nutng config show       # the effective config, with defaults
+currently config validate   # check it without starting anything
+currently config show       # the effective config, with defaults
 ```
 
 Mistakes are reported with the file, line and a suggestion:
 
 ```
-nutng.yaml:4: UPS rack (usbhid driver): unknown option "serail" (did you mean "serial"?)
+currently.yaml:4: UPS rack (usbhid driver): unknown option "serail" (did you mean "serial"?)
 ```
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `cmd/nutng` | The CLI and daemon entry point |
+| `cmd/currently` | The CLI and daemon entry point |
 | `pkg/sdk` | Contracts for drivers and outputs (built-in and plugins) |
-| `proto/nutng/v1` | The same contracts as gRPC services, for external plugins |
+| `proto/currently/v1` | The same contracts as gRPC services, for external plugins |
 | `internal/core` | State store, event bus, driver supervision |
-| `internal/config` | Loading and validating `nutng.yaml` |
+| `internal/config` | Loading and validating `currently.yaml` |
 | `drivers/usbhid` | USB HID UPS driver: transports, mapping, capture/replay |
 | `drivers/usbhid/hid` | HID report descriptor parser |
 | `drivers/usbhid/quirks` | Field-to-variable mappings per vendor |
 | `drivers/simulator` | Simulated UPS |
 | `internal/policy` | Shutdown policy: when and how to shut down |
 | `internal/plugins` | Plugin loader and supervisor |
-| `internal/scaffold` | `nutng plugin new` templates and the Python SDK |
+| `internal/scaffold` | `currently plugin new` templates and the Python SDK |
 | `pkg/plugin` | Go SDK for plugins |
 | `plugins/mqtt` | MQTT output plugin |
 | `drivers/execdriver` | `exec` driver: any program that prints UPS variables |
-| `internal/nutimport` | `nutng import-nut` |
-| `drivers/nutclient` | `nut` driver: a UPS on another nutng or NUT upsd |
+| `internal/nutimport` | `currently import-nut` |
+| `drivers/nutclient` | `nut` driver: a UPS on another Currently or NUT upsd |
 | `outputs/rest` | REST/JSON API and event stream |
 | `outputs/nutproto` | NUT protocol server (upsd compatible) |
 | `outputs/prometheus` | Prometheus metrics |
@@ -319,18 +322,18 @@ nutng.yaml:4: UPS rack (usbhid driver): unknown option "serail" (did you mean "s
 
 ## License
 
-nut-ng is licensed under the [Apache License, Version 2.0](LICENSE).
+Currently is licensed under the [Apache License, Version 2.0](LICENSE).
 
 ## Development
 
 ```sh
 go test ./...
 go vet ./...
-NUTNG_HW=1 go test ./drivers/usbhid -run TestHardware -v   # with a UPS attached
-go build -o nutng ./cmd/nutng && test/integration/nut-clients.sh ./nutng   # Linux
-test/integration/shutdown.sh ./nutng   # Linux; shuts nothing down (marker files only)
-test/integration/snmp.sh ./nutng       # Linux; needs the snmp and snmptrapd packages
+CURRENTLY_HW=1 go test ./drivers/usbhid -run TestHardware -v   # with a UPS attached
+go build -o currently ./cmd/currently && test/integration/nut-clients.sh ./currently   # Linux
+test/integration/shutdown.sh ./currently   # Linux; shuts nothing down (marker files only)
+test/integration/snmp.sh ./currently       # Linux; needs the snmp and snmptrapd packages
 goreleaser release --snapshot --clean --skip=docker,sign,sbom   # every archive and package
-NUTNG_TEST_PYTHON=python3 go test ./internal/scaffold   # Python plugin SDK (needs grpcio)
+CURRENTLY_TEST_PYTHON=python3 go test ./internal/scaffold   # Python plugin SDK (needs grpcio)
 scripts/gen.sh                         # after changing proto/
 ```

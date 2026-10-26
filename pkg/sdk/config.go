@@ -8,7 +8,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/nut-ng/nut-ng/internal/suggest"
+	"github.com/duskglow/currently/internal/suggest"
 )
 
 // Config holds a plugin's settings from the config file: every key in the

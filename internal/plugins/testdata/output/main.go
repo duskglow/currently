@@ -1,4 +1,4 @@
-// Command nutng-output-testoutput is an output plugin for the loader tests.
+// Command currently-output-testoutput is an output plugin for the loader tests.
 // It appends what it sees to the file named by the "file" option.
 package main
 
@@ -9,8 +9,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/nut-ng/nut-ng/pkg/plugin"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/plugin"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 type output struct{}

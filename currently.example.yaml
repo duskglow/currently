@@ -1,0 +1,98 @@
+# Example Currently configuration. Every setting is optional.
+
+ups:
+  # Each key is a UPS name, used in the CLI and the API.
+  rack:
+    # driver: usbhid           # the default: a USB UPS
+    description: Rack UPS
+    stale_after: 30s           # mark the UPS stale if it stays silent this long
+    # Everything else is passed to the driver. usbhid options (all
+    # optional; `currently detect` prints the right ones):
+    # serial: "CXXKZ0000000"   # choose by USB serial number
+    # id: "0764:0601"          # or by vendor:product ID
+    # interval: 2s             # how often to read the UPS
+
+  # nas:
+  #   driver: nut              # a UPS on another Currently or NUT upsd
+  #   host: nas.local
+  #   ups: ups
+  #   username: mon
+  #   password_env: CURRENTLY_MON_PASSWORD
+  # other:
+  #   driver: exec             # any program that prints UPS variables
+  #   command: upsc ups@nas.local
+
+  lab:
+    driver: simulator          # a simulated UPS, for trying things out
+    description: Simulated UPS for testing
+    # Simulator options:
+    scenario: cycle            # online, onbattery or cycle
+    online_for: 2m             # cycle: time on mains power
+    outage_for: 1m             # cycle: length of each outage
+    speed: 1                   # >1 runs the battery model faster than real time
+    runtime: 30m               # full-charge runtime at 50% load
+    load: 35                   # percent
+
+listen:
+  http: 127.0.0.1:9300         # REST API and /metrics; ":9300" for all interfaces, or "off"
+  nut: 127.0.0.1:3493          # NUT protocol (upsc, upsmon, Home Assistant, NAS); or "off"
+  # metrics: 127.0.0.1:9301    # serve /metrics on its own port instead, or "off"
+  # nut_tls:                   # enable STARTTLS on the NUT protocol
+  #   cert_file: /etc/currently/cert.pem
+  #   key_file: /etc/currently/key.pem
+  # control: /run/currently/currently.sock   # socket the Currently CLI uses
+  # snmp:                      # SNMP agent (UPS-MIB) for LibreNMS, Zabbix, PRTG...
+  #   addr: ":1161"            # UDP; 161 needs root
+  #   community: public        # v1/v2c; other UPSes: public@<ups>
+  #   users:                   # SNMPv3; other UPSes by context name
+  #     monitor:
+  #       auth: sha256         # none, md5, sha, sha224, sha256, sha384, sha512
+  #       auth_password_env: CURRENTLY_SNMP_AUTH
+  #       privacy: aes         # none or aes
+  #       privacy_password_env: CURRENTLY_SNMP_PRIV
+  #   traps:
+  #     - target: librenms.example.com   # SNMPv2c traps on power events
+
+# Accounts for the NUT protocol, like NUT's upsd.users. Reading needs no
+# login; upsmon and commands do.
+# users:
+#   upsmon:
+#     password_env: CURRENTLY_UPSMON_PASSWORD   # or password: ...
+#     role: primary            # secondary (watch), primary (may set FSD), admin (+ commands)
+
+# Shut this computer down when the UPS is about to run out. Without this
+# section, Currently only monitors. `currently test shutdown` shows every step.
+# shutdown:
+#   ups: [rack]                # UPSes powering this computer (default: all)
+#   when:
+#     low_battery: true        # the UPS's own low-battery signal (default)
+#     on_battery_for: 5m       # or after this long on battery
+#     runtime_below: 5m        # or when less runtime than this is left
+#     charge_below: 20         # or when the charge drops below this (%)
+#   hooks:                     # commands to run first
+#     - /usr/local/bin/stop-vms
+#   wait_for_secondaries: 15s  # as primary: wait for NUT clients after FSD
+#   power_off_ups: false       # cut UPS power after ups_off_delay, restore on mains
+#   ups_off_delay: 60s
+#   command: ""                # replace the OS shutdown command
+#   dry_run: false             # log each step without doing it
+
+# Output plugins (see `currently plugin list`). Outputs only read unless
+# allow_control is set.
+# outputs:
+#   mqtt:
+#     broker: tcp://192.168.1.5:1883
+#     allow_control: false
+# plugins:
+#   dirs: [/opt/currently/plugins]
+#   commands:
+#     - ["python3", "/opt/currently/myups/plugin.py"]
+
+api:
+  # Commands and variable changes over HTTP need this bearer token.
+  # Without one, the HTTP API is read-only.
+  # token_env: CURRENTLY_TOKEN     # read the token from this environment variable
+
+log:
+  level: info                  # debug, info, warn, error
+  format: text                 # text or json

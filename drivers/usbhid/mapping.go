@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nut-ng/nut-ng/drivers/usbhid/hid"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/drivers/usbhid/hid"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // Mapper turns raw field values into NUT variables, using quirk files.

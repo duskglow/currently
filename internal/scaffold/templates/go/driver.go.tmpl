@@ -1,7 +1,7 @@
-// Command nutng-driver-{{.Name}} is a nutng driver plugin.
+// Command currently-driver-{{.Name}} is a Currently driver plugin.
 //
-// Build it, put the executable in a nutng plugin directory (see
-// `nutng plugin list`), and use it in nutng.yaml:
+// Build it, put the executable in a Currently plugin directory (see
+// `currently plugin list`), and use it in currently.yaml:
 //
 //	ups:
 //	  myups:
@@ -16,8 +16,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/plugin"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/plugin"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 type driver struct{}
@@ -67,13 +67,13 @@ type device struct {
 	charge int
 }
 
-// Watch reports variables until ctx ends. Returning an error makes nutng
+// Watch reports variables until ctx ends. Returning an error makes Currently
 // reopen the device with backoff.
 func (d *device) Watch(ctx context.Context, sink func(sdk.Update)) error {
 	t := time.NewTicker(d.o.Interval)
 	defer t.Stop()
 	for {
-		// TODO: read the UPS. Use NUT variable names (`nutng vars` shows them).
+		// TODO: read the UPS. Use NUT variable names (`currently vars` shows them).
 		sink(sdk.Update{Vars: map[string]string{
 			"ups.status":     "OL",
 			"battery.charge": strconv.Itoa(d.charge),

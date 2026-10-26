@@ -1,10 +1,10 @@
-// Package version holds the nutng version, set at build time with
-// -ldflags "-X github.com/nut-ng/nut-ng/internal/version.Version=v1.2.3".
+// Package version holds the Currently version, set at build time with
+// -ldflags "-X github.com/duskglow/currently/internal/version.Version=v1.2.3".
 package version
 
 import "runtime/debug"
 
-// Version of nutng.
+// Version of Currently.
 var Version = "dev"
 
 // String returns the version, falling back to the VCS revision for

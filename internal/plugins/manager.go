@@ -12,13 +12,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/nut-ng/nut-ng/internal/registry"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/internal/registry"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
-// nameRE matches plugin executables: nutng-driver-<name> or
-// nutng-output-<name>, with .exe on Windows.
-var nameRE = regexp.MustCompile(`^nutng-(driver|output)-([A-Za-z0-9][A-Za-z0-9_.-]*?)(\.exe)?$`)
+// nameRE matches plugin executables: currently-driver-<name> or
+// currently-output-<name>, with .exe on Windows.
+var nameRE = regexp.MustCompile(`^currently-(driver|output)-([A-Za-z0-9][A-Za-z0-9_.-]*?)(\.exe)?$`)
 
 // Status describes one plugin.
 type Status struct {
@@ -52,7 +52,7 @@ type Options struct {
 	// Dirs are searched for plugin executables, in order.
 	Dirs []string
 	// Commands are plugins started with an interpreter, such as
-	// ["python3", "/opt/nutng/myplugin.py"].
+	// ["python3", "/opt/currently/myplugin.py"].
 	Commands [][]string
 }
 
@@ -91,7 +91,7 @@ func Find(dirs []string) [][]string {
 
 // Load starts every plugin, learns what it is, and registers it in reg.
 // Plugins that fail to start are reported in Statuses, not as errors, so
-// one broken plugin does not stop nutng.
+// one broken plugin does not stop Currently.
 func Load(ctx context.Context, opts Options, reg *registry.Registry, log *slog.Logger) *Manager {
 	m := &Manager{log: log}
 	cmds := append(Find(opts.Dirs), opts.Commands...)

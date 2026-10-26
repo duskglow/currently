@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // unitSuffix gives each unit its Prometheus base-unit suffix.
@@ -25,7 +25,7 @@ var unitSuffix = map[string]string{
 	sdk.UnitCelsius: "_celsius",
 }
 
-// statusFlags are exported as nutng_ups_status{flag=...} 0/1 for every
+// statusFlags are exported as currently_ups_status{flag=...} 0/1 for every
 // UPS, so alerts can match a flag that is off.
 var statusFlags = []sdk.Flag{
 	sdk.FlagOnline, sdk.FlagOnBattery, sdk.FlagLowBattery, sdk.FlagHighBattery,
@@ -35,9 +35,9 @@ var statusFlags = []sdk.Flag{
 }
 
 // MetricName returns the metric for a numeric variable, such as
-// nutng_battery_charge_percent for battery.charge.
+// currently_battery_charge_percent for battery.charge.
 func MetricName(spec sdk.VarSpec) string {
-	return "nutng_" + strings.NewReplacer(".", "_", "-", "_").Replace(spec.Name) + unitSuffix[spec.Unit]
+	return "currently_" + strings.NewReplacer(".", "_", "-", "_").Replace(spec.Name) + unitSuffix[spec.Unit]
 }
 
 // Handler serves /metrics.
@@ -65,21 +65,21 @@ func Write(w io.Writer, list []sdk.UPS, version string) {
 		f.samples = append(f.samples, name+labelString(labels)+" "+formatValue(value))
 	}
 
-	add("nutng_build_info", "gauge", "nutng version.", map[string]string{"version": version}, 1)
+	add("currently_build_info", "gauge", "Currently version.", map[string]string{"version": version}, 1)
 	for _, u := range list {
 		ups := map[string]string{"ups": u.Name}
 		up := 0.0
 		if u.State == sdk.StateConnected {
 			up = 1
 		}
-		add("nutng_ups_up", "gauge", "1 when nutng is receiving data from the UPS.", ups, up)
-		add("nutng_ups_info", "gauge", "UPS identity; always 1.", map[string]string{
+		add("currently_ups_up", "gauge", "1 when Currently is receiving data from the UPS.", ups, up)
+		add("currently_ups_info", "gauge", "UPS identity; always 1.", map[string]string{
 			"ups": u.Name, "driver": u.Driver, "model": u.Model(),
 			"serial": u.Value("device.serial"), "description": u.Description,
 		}, 1)
-		add("nutng_ups_driver_restarts_total", "counter", "Times the driver was reopened after a failure.", ups, float64(u.Restarts))
+		add("currently_ups_driver_restarts_total", "counter", "Times the driver was reopened after a failure.", ups, float64(u.Restarts))
 		if !u.LastUpdate.IsZero() {
-			add("nutng_ups_last_update_timestamp_seconds", "gauge", "Time of the last data from the UPS.", ups,
+			add("currently_ups_last_update_timestamp_seconds", "gauge", "Time of the last data from the UPS.", ups,
 				float64(u.LastUpdate.UnixNano())/1e9)
 		}
 		if up == 0 {
@@ -92,7 +92,7 @@ func Write(w io.Writer, list []sdk.UPS, version string) {
 			if st.Has(f) {
 				v = 1
 			}
-			add("nutng_ups_status", "gauge", "1 when the UPS status has the flag (OL online, OB on battery, LB low battery, ...).",
+			add("currently_ups_status", "gauge", "1 when the UPS status has the flag (OL online, OB on battery, LB low battery, ...).",
 				map[string]string{"ups": u.Name, "flag": string(f)}, v)
 		}
 

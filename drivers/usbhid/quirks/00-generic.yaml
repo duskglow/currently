@@ -4,7 +4,7 @@
 # is used. Vendor files (matched by USB vendor ID) are applied after this
 # one and replace variables or commands of the same name. Files in
 # <config dir>/quirks.d/*.yaml are applied last, so a new model can often be
-# supported without rebuilding nutng. Run `nutng debug capture` to see the
+# supported without rebuilding Currently. Run `currently debug capture` to see the
 # paths a device reports.
 name: generic
 description: Standard HID Power Device and Battery System layouts
@@ -247,7 +247,7 @@ commands:
     paths: [UPS.BatterySystem.Test, UPS.Battery.Test, UPS.Output.Test]
     value: 3
 
-  # Power commands. They cut the UPS's output, so nutng uses them only when
+  # Power commands. They cut the UPS's output, so Currently uses them only when
   # the shutdown policy sets power_off_ups. Delays are in seconds; a delay
   # the UPS cannot represent (some count in minutes) is refused rather than
   # rounded, because rounding down to 0 would cut power at once.

@@ -1,9 +1,9 @@
 # Troubleshooting
 
-## Start with `nutng doctor`
+## Start with `currently doctor`
 
 ```sh
-sudo nutng doctor
+sudo currently doctor
 ```
 
 It checks the config, the service, whether the daemon answers on each port
@@ -21,31 +21,31 @@ FreeBSD only one program can use the UPS: stop NUT's driver first.
 
 **"permission denied".** The service runs as root and is unaffected. To
 use the CLI as a regular user on Linux, install the udev rule and join the
-`nutng` group (see [Platforms](platforms.md#linux)).
+`currently` group (see [Platforms](platforms.md#linux)).
 
 **A port is in use.** Another program (NUT's upsd on 3493, snmpd on 161)
-has it. Stop it, or move nutng with the `listen:` settings. SNMP on a port
+has it. Stop it, or move Currently with the `listen:` settings. SNMP on a port
 below 1024 needs root.
 
-**Wrong or missing values.** Record the UPS with `nutng debug capture` and
+**Wrong or missing values.** Record the UPS with `currently debug capture` and
 open an issue with the file attached. Most fixes are a few lines in a
 [quirks file](drivers.md#usbhid-default), which you can also add yourself
 in `quirks.d/`.
 
-**Config errors.** `nutng config validate` names the file, the line and
+**Config errors.** `currently config validate` names the file, the line and
 usually the fix:
 
 ```
-nutng.yaml:4: UPS rack (usbhid driver): unknown option "serail" (did you mean "serial"?)
+currently.yaml:4: UPS rack (usbhid driver): unknown option "serail" (did you mean "serial"?)
 ```
 
 ## Logs
 
 | Platform | Where |
 |---|---|
-| Linux (systemd) | `journalctl -u nutng` |
-| Windows | Event Viewer → Windows Logs → Application, source `nutng` |
-| macOS | `/var/log/nutng.log` with the packaged plist, or the unified log (`log show --predicate 'process == "nutng"'`) |
+| Linux (systemd) | `journalctl -u currently` |
+| Windows | Event Viewer → Windows Logs → Application, source `currently` |
+| macOS | `/var/log/currently.log` with the packaged plist, or the unified log (`log show --predicate 'process == "currently"'`) |
 | FreeBSD | `/var/log/messages` |
 
-`log.level: debug` in `nutng.yaml` shows every request and reading.
+`log.level: debug` in `currently.yaml` shows every request and reading.

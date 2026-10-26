@@ -3,7 +3,7 @@ package main
 import (
 	"crypto/tls"
 
-	"github.com/nut-ng/nut-ng/pkg/plugin"
+	"github.com/duskglow/currently/pkg/plugin"
 )
 
 // insecureTLS skips certificate checks, for brokers with self-signed

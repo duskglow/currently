@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nut-ng/nut-ng/internal/client"
-	"github.com/nut-ng/nut-ng/internal/config"
-	"github.com/nut-ng/nut-ng/internal/registry"
+	"github.com/duskglow/currently/internal/client"
+	"github.com/duskglow/currently/internal/config"
+	"github.com/duskglow/currently/internal/registry"
 )
 
 // recorder is a policy.Executor that only records; nothing is run.
@@ -89,8 +89,8 @@ func start(t *testing.T, yaml string, exec *recorder) {
 	})
 }
 
-// TestPrimaryAndSecondaryShutdown runs a primary nutng with a simulated
-// UPS and a secondary nutng that follows it over the NUT protocol. A
+// TestPrimaryAndSecondaryShutdown runs a primary Currently with a simulated
+// UPS and a secondary Currently that follows it over the NUT protocol. A
 // simulated outage must shut the secondary down first; the primary waits
 // for it to log out, then shuts down. Executors only record.
 func TestPrimaryAndSecondaryShutdown(t *testing.T) {

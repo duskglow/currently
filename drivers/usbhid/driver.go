@@ -18,12 +18,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nut-ng/nut-ng/internal/paths"
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/internal/paths"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 const (
-	// DriverName is the name used in `driver:` in nutng.yaml.
+	// DriverName is the name used in `driver:` in currently.yaml.
 	DriverName = "usbhid"
 	// Version of the usbhid driver.
 	Version = "0.1.0"
@@ -31,7 +31,7 @@ const (
 
 // Options select a device and tune polling.
 type Options struct {
-	// ID is "vvvv" or "vvvv:pppp" in hex, as shown by `nutng detect`.
+	// ID is "vvvv" or "vvvv:pppp" in hex, as shown by `currently detect`.
 	ID string `yaml:"id"`
 	// Serial matches the USB serial number exactly.
 	Serial string `yaml:"serial"`

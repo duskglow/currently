@@ -17,8 +17,8 @@ is set; then commands and variable changes need it as a bearer token:
 
 ```sh
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-  http://nutng-host:9300/api/v1/ups/rack/commands/beeper.disable
+  http://currently-host:9300/api/v1/ups/rack/commands/beeper.disable
 ```
 
-The nutng CLI talks to the daemon over a local socket with the same API,
+The Currently CLI talks to the daemon over a local socket with the same API,
 and falls back to the read-only HTTP API when it may not open the socket.

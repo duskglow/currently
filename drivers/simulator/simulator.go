@@ -1,6 +1,6 @@
 // Package simulator is a driver for a simulated UPS. It needs no hardware,
-// so it is useful for trying nut-ng out, for tests, and for rehearsing
-// power failures (`nutng cmd <ups> sim.power.fail`).
+// so it is useful for trying Currently out, for tests, and for rehearsing
+// power failures (`currently cmd <ups> sim.power.fail`).
 package simulator
 
 import (
@@ -13,11 +13,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 const (
-	// DriverName is the name used in `driver:` in nutng.yaml.
+	// DriverName is the name used in `driver:` in currently.yaml.
 	DriverName = "simulator"
 	// Version of the simulator driver.
 	Version = "1.0.0"
@@ -53,7 +53,7 @@ type Options struct {
 // DefaultOptions returns the settings used for keys left out of the config.
 func DefaultOptions() Options {
 	return Options{
-		Manufacturer:     "nut-ng",
+		Manufacturer:     "Currently",
 		Model:            "Simulator 1500",
 		Serial:           "SIM0001",
 		Scenario:         ScenarioOnline,

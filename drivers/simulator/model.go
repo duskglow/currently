@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/nut-ng/nut-ng/pkg/sdk"
+	"github.com/duskglow/currently/pkg/sdk"
 )
 
 // model is a simple UPS: mains power comes and goes according to the
