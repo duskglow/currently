@@ -21,6 +21,7 @@ import (
 	"github.com/nut-ng/nut-ng/drivers/usbhid"
 	"github.com/nut-ng/nut-ng/internal/client"
 	"github.com/nut-ng/nut-ng/internal/config"
+	"github.com/nut-ng/nut-ng/internal/plugins"
 	"github.com/nut-ng/nut-ng/internal/policy"
 	"github.com/nut-ng/nut-ng/internal/registry"
 	"github.com/nut-ng/nut-ng/internal/svcmgr"
@@ -45,9 +46,11 @@ type check struct {
 }
 
 type doctor struct {
-	app    *app
-	ctx    context.Context
-	checks []check
+	app     *app
+	ctx     context.Context
+	checks  []check
+	reg     *registry.Registry
+	plugins *plugins.Manager
 }
 
 func (d *doctor) add(status, area, detail string, fix ...string) {
@@ -85,6 +88,7 @@ func (a *app) doctorCmd() *cobra.Command {
 
 func (d *doctor) run() {
 	cfg := d.checkConfig()
+	d.checkPlugins()
 	svc := d.checkService()
 	list, reachable := d.checkDaemon(cfg, svc)
 	d.checkPorts(cfg, reachable)
@@ -101,13 +105,16 @@ func (d *doctor) checkConfig() *config.Config {
 	switch {
 	case err != nil:
 		d.add(checkFail, "Config", err.Error(), "fix the lines shown, then run `nutng config validate`")
+		d.reg, d.plugins = d.app.registry(d.ctx, config.Default())
 		return config.Default()
 	case !found:
 		d.add(checkWarn, "Config", fmt.Sprintf("no config file at %s; nutng monitors every USB UPS it finds", config.DefaultPath()),
 			"run `nutng init` to write one")
+		d.reg, d.plugins = d.app.registry(d.ctx, cfg)
 		return cfg
 	}
-	if err := cfg.Validate(registry.Builtin()); err != nil {
+	d.reg, d.plugins = d.app.registry(d.ctx, cfg)
+	if err := cfg.Validate(d.reg); err != nil {
 		d.add(checkFail, "Config", err.Error(), "fix the lines shown, then run `nutng config validate`")
 		return cfg
 	}
@@ -292,6 +299,19 @@ func (d *doctor) checkUPSes(list []sdk.UPS) {
 			}
 			d.add(checkFail, "UPS", fmt.Sprintf("%s: %s: %s", u.Name, u.State, u.LastError), fix)
 		}
+	}
+}
+
+// checkPlugins reports plugins that failed to start.
+func (d *doctor) checkPlugins() {
+	defer d.plugins.Close()
+	for _, s := range d.plugins.Statuses() {
+		if s.Error != "" {
+			d.add(checkFail, "Plugins", fmt.Sprintf("%s: %s", s.Source, s.Error),
+				"check that it is a nutng plugin built for this nutng version; `nutng plugin list` shows the details")
+			continue
+		}
+		d.add(checkOK, "Plugins", fmt.Sprintf("%s %s %s (%s)", s.Kind, s.Name, s.Version, s.Source))
 	}
 }
 

@@ -2,7 +2,10 @@ syntax = "proto3";
 
 // Driver plugins read UPS hardware and report variables to the core.
 // An executable named nutng-driver-<name> serves DriverService over
-// hashicorp/go-plugin; the core adapts it to sdk.Driver and sdk.Device.
+// gRPC, started the hashicorp/go-plugin way: it checks the magic cookie
+// environment variable, listens on 127.0.0.1, serves the gRPC health
+// service for "plugin", and prints "1|1|tcp|<address>|grpc" on stdout.
+// The core adapts it to sdk.Driver and sdk.Device.
 package nutng.v1;
 
 import "google/protobuf/struct.proto";

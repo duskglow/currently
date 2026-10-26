@@ -1,0 +1,100 @@
+// Command nutng-driver-{{.Name}} is a nutng driver plugin.
+//
+// Build it, put the executable in a nutng plugin directory (see
+// `nutng plugin list`), and use it in nutng.yaml:
+//
+//	ups:
+//	  myups:
+//	    driver: {{.Name}}
+//	    address: 192.168.1.50
+package main
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"strconv"
+	"time"
+
+	"github.com/nut-ng/nut-ng/pkg/plugin"
+	"github.com/nut-ng/nut-ng/pkg/sdk"
+)
+
+type driver struct{}
+
+func (driver) Info() sdk.Info {
+	return sdk.Info{Name: "{{.Name}}", Version: "0.1.0", Description: "TODO: what this driver reads"}
+}
+
+// options are the settings in a UPS block. Unknown keys are reported with
+// a "did you mean" hint.
+type options struct {
+	Address  string        `yaml:"address"`
+	Interval time.Duration `yaml:"interval"`
+}
+
+func parse(cfg sdk.Config) (options, error) {
+	o := options{Interval: 5 * time.Second}
+	if err := cfg.Decode(&o); err != nil {
+		return o, err
+	}
+	if o.Address == "" {
+		return o, errors.New("address is required")
+	}
+	return o, nil
+}
+
+func (driver) ValidateConfig(cfg sdk.Config) error {
+	_, err := parse(cfg)
+	return err
+}
+
+// Discover lists devices found without configuration (none here).
+func (driver) Discover(context.Context) ([]sdk.Discovered, error) { return nil, nil }
+
+func (driver) Open(_ context.Context, cfg sdk.Config, log *slog.Logger) (sdk.Device, error) {
+	o, err := parse(cfg)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: connect to the UPS at o.Address.
+	log.Info("opened", "address", o.Address)
+	return &device{o: o, charge: 100}, nil
+}
+
+type device struct {
+	o      options
+	charge int
+}
+
+// Watch reports variables until ctx ends. Returning an error makes nutng
+// reopen the device with backoff.
+func (d *device) Watch(ctx context.Context, sink func(sdk.Update)) error {
+	t := time.NewTicker(d.o.Interval)
+	defer t.Stop()
+	for {
+		// TODO: read the UPS. Use NUT variable names (`nutng vars` shows them).
+		sink(sdk.Update{Vars: map[string]string{
+			"ups.status":     "OL",
+			"battery.charge": strconv.Itoa(d.charge),
+			"device.model":   "{{.Name}} example",
+		}})
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-t.C:
+		}
+	}
+}
+
+func (d *device) Commands() []sdk.Command { return []sdk.Command{sdk.NewCommand("beeper.disable")} }
+func (d *device) Writable() []string     { return nil }
+
+func (d *device) RunCommand(_ context.Context, name, _ string) error {
+	return sdk.ErrNotSupported // TODO
+}
+
+func (d *device) SetVar(_ context.Context, name, _ string) error { return sdk.ErrNotSupported }
+func (d *device) Close() error                                 { return nil }
+
+func main() { plugin.ServeDriver(driver{}) }

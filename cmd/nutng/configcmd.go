@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/nut-ng/nut-ng/internal/config"
-	"github.com/nut-ng/nut-ng/internal/registry"
 )
 
 func (a *app) configCmd() *cobra.Command {
@@ -25,7 +24,9 @@ func (a *app) configCmd() *cobra.Command {
 				fmt.Fprintln(a.stderr, err)
 				return exitError(1)
 			}
-			if err := cfg.Validate(registry.Builtin()); err != nil {
+			reg, pm := a.registry(cmd.Context(), cfg)
+			defer pm.Close()
+			if err := cfg.Validate(reg); err != nil {
 				fmt.Fprintln(a.stderr, err)
 				return exitError(1)
 			}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"runtime"
 
@@ -13,6 +14,9 @@ import (
 
 	"github.com/nut-ng/nut-ng/internal/client"
 	"github.com/nut-ng/nut-ng/internal/config"
+	"github.com/nut-ng/nut-ng/internal/paths"
+	"github.com/nut-ng/nut-ng/internal/plugins"
+	"github.com/nut-ng/nut-ng/internal/registry"
 	"github.com/nut-ng/nut-ng/internal/version"
 )
 
@@ -86,6 +90,7 @@ Try it without hardware:
 		a.doctorCmd(),
 		a.testCmd(),
 		a.importNUTCmd(),
+		a.pluginCmd(),
 		a.debugCmd(),
 		a.versionCmd(),
 	)
@@ -152,6 +157,26 @@ func controlHint() string {
 		return "run nutng from a terminal opened with \"Run as administrator\""
 	}
 	return "run it with sudo, or add yourself to the nutng group"
+}
+
+// loadRegistry returns the built-in drivers plus the installed plugins.
+// The caller must close the manager, which stops the plugin processes.
+func loadRegistry(ctx context.Context, cfg *config.Config, log *slog.Logger) (*registry.Registry, *plugins.Manager) {
+	reg := registry.Builtin()
+	dirs := append(append([]string{}, cfg.Plugins.Dirs...), paths.PluginDirs()...)
+	return reg, plugins.Load(ctx, plugins.Options{Dirs: dirs, Commands: cfg.Plugins.Commands}, reg, log)
+}
+
+// registry loads plugins for a CLI command, reporting plugin problems on
+// stderr.
+func (a *app) registry(ctx context.Context, cfg *config.Config) (*registry.Registry, *plugins.Manager) {
+	if cfg == nil {
+		var err error
+		if cfg, _, err = a.loadConfig(); err != nil {
+			cfg = config.Default()
+		}
+	}
+	return loadRegistry(ctx, cfg, slog.New(slog.NewTextHandler(a.stderr, &slog.HandlerOptions{Level: slog.LevelWarn})))
 }
 
 func (a *app) versionCmd() *cobra.Command {

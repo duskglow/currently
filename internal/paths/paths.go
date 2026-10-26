@@ -24,6 +24,30 @@ func Config() string {
 	}
 }
 
+// PluginDirs lists the directories searched for plugin executables, in
+// order: next to the nutng executable, the config directory's plugins.d,
+// then the system plugin directory.
+func PluginDirs() []string {
+	var dirs []string
+	if exe, err := os.Executable(); err == nil {
+		dirs = append(dirs, filepath.Join(filepath.Dir(exe), "plugins"))
+	}
+	dirs = append(dirs, filepath.Join(ConfigDir(), "plugins.d"))
+	switch runtime.GOOS {
+	case "windows":
+		pf := os.Getenv("ProgramFiles")
+		if pf == "" {
+			pf = `C:\Program Files`
+		}
+		dirs = append(dirs, filepath.Join(pf, "nutng", "plugins"))
+	case "linux":
+		dirs = append(dirs, "/usr/local/lib/nutng/plugins", "/usr/lib/nutng/plugins")
+	default:
+		dirs = append(dirs, "/usr/local/lib/nutng/plugins")
+	}
+	return dirs
+}
+
 // ConfigDir is the directory of the config file, which also holds
 // user-supplied files such as quirks.d.
 func ConfigDir() string { return filepath.Dir(Config()) }

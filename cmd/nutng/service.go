@@ -10,7 +10,6 @@ import (
 	"github.com/kardianos/service"
 	"github.com/spf13/cobra"
 
-	"github.com/nut-ng/nut-ng/internal/registry"
 	"github.com/nut-ng/nut-ng/internal/svcmgr"
 )
 
@@ -107,7 +106,9 @@ config file; otherwise the default location.`,
 			if err != nil {
 				return fmt.Errorf("%w\nFix the config before installing the service", err)
 			}
-			if err := cfg.Validate(registry.Builtin()); err != nil {
+			reg, pm := a.registry(cmd.Context(), cfg)
+			defer pm.Close()
+			if err := cfg.Validate(reg); err != nil {
 				return fmt.Errorf("%w\nFix the config before installing the service", err)
 			}
 

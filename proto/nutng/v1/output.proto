@@ -3,7 +3,8 @@ syntax = "proto3";
 // Output plugins publish UPS state (MQTT, webhooks, other protocols).
 // An executable named nutng-output-<name> serves OutputService. While
 // RunOutput is in progress, the plugin calls back into the core through
-// HostService, reached via the go-plugin broker id passed in RunOutput.
+// HostService, which the core serves at host_address. Every call must send
+// host_token in the "authorization" metadata as "Bearer <token>".
 package nutng.v1;
 
 import "google/protobuf/struct.proto";
@@ -34,8 +35,13 @@ message ValidateOutputConfigResponse {
 
 message RunOutputRequest {
   google.protobuf.Struct config = 1;
-  // go-plugin broker id on which the core serves HostService.
-  uint32 host_broker_id = 2;
+  // Where the core serves HostService for this plugin: "127.0.0.1:port".
+  string host_address = 2;
+  // Bearer token for HostService calls.
+  string host_token = 3;
+  // Whether HostService allows commands, variable changes and FSD
+  // (the output's allow_control setting).
+  bool allow_control = 4;
 }
 
 message RunOutputResponse {}
@@ -46,6 +52,7 @@ service HostService {
   rpc ListUPS(ListUPSRequest) returns (ListUPSResponse);
   rpc GetUPS(GetUPSRequest) returns (GetUPSResponse);
   rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
+  rpc GetRecentEvents(GetRecentEventsRequest) returns (GetRecentEventsResponse);
   rpc SubscribeEvents(SubscribeEventsRequest) returns (stream SubscribeEventsResponse);
   rpc RunUPSCommand(RunUPSCommandRequest) returns (RunUPSCommandResponse);
   rpc SetUPSVar(SetUPSVarRequest) returns (SetUPSVarResponse);
@@ -74,6 +81,15 @@ message GetHistoryRequest {
 
 message GetHistoryResponse {
   repeated Sample samples = 1;
+}
+
+message GetRecentEventsRequest {
+  // Up to this many recent notable events, oldest first.
+  uint32 limit = 1;
+}
+
+message GetRecentEventsResponse {
+  repeated Event events = 1;
 }
 
 message SubscribeEventsRequest {

@@ -4,11 +4,12 @@ UPS monitoring that is easy to set up. One self-contained binary, one short
 config file, clear error messages, and an API that monitoring tools can
 query.
 
-> **Status:** early development (milestone 4 of 7). USB UPSes work on
+> **Status:** early development (milestone 5 of 7). USB UPSes work on
 > Windows and Linux. nutng shuts computers down safely (as primary or
 > secondary, and alongside NUT's upsmon and upsd), serves the NUT
-> protocol, Prometheus metrics and a REST API, and installs itself as a
-> service. Plugins and SNMP are next. See [docs/PLAN.md](docs/PLAN.md).
+> protocol, Prometheus metrics, MQTT and a REST API, installs itself as a
+> service, and takes driver and output plugins. SNMP and macOS/FreeBSD
+> USB support are next. See [docs/PLAN.md](docs/PLAN.md).
 
 ## Get started
 
@@ -53,6 +54,62 @@ rehearses an outage.
 Moving from NUT? `nutng import-nut` converts `/etc/nut` (ups.conf,
 upsd.conf, upsd.users, upsmon.conf) into a nutng.yaml and lists anything it
 could not convert.
+
+## Plugins
+
+Drivers (new kinds of UPS) and outputs (new places to send UPS data) can
+be added without rebuilding nutng. A plugin is an executable named
+`nutng-driver-<name>` or `nutng-output-<name>` in a plugin directory, or a
+command listed in nutng.yaml for interpreted languages:
+
+```sh
+nutng plugin list          # installed plugins, and the directories searched
+nutng plugin info mqtt
+```
+
+```yaml
+plugins:
+  dirs: [/opt/nutng/plugins]             # searched before the defaults
+  commands:                              # plugins that need an interpreter
+    - ["python3", "/opt/nutng/myups/plugin.py"]
+```
+
+nutng restarts a plugin that crashes, stops plugins the config does not
+use, and plugins exit when nutng does.
+
+**MQTT** (`plugins/mqtt`, built as `nutng-output-mqtt`) publishes each UPS's
+state and events, with Home Assistant discovery:
+
+```yaml
+outputs:
+  mqtt:
+    broker: tcp://192.168.1.5:1883
+    username: nutng
+    password_env: NUTNG_MQTT_PASSWORD
+    allow_control: true      # accept commands on nutng/<ups>/command/<name>
+```
+
+Outputs can only read unless `allow_control: true`.
+
+**The exec driver** turns any program that prints UPS variables, as JSON
+or as `name: value` lines, into a UPS. For example, to read a UPS from
+another NUT server with `upsc`:
+
+```yaml
+ups:
+  nas:
+    driver: exec
+    command: upsc ups@nas.local
+    interval: 10s
+```
+
+**Writing a plugin.** `nutng plugin new driver|output <name>` creates a Go
+or Python (`--lang python`) project to start from. Go plugins implement the
+same `sdk.Driver` / `sdk.Output` interfaces as the built-in ones
+([pkg/sdk](pkg/sdk)) and call `plugin.ServeDriver` / `plugin.ServeOutput`
+([pkg/plugin](pkg/plugin)). Other languages speak the gRPC protocol in
+[proto/nutng/v1](proto/nutng/v1). See
+[examples/plugins/python-driver](examples/plugins/python-driver).
 
 ## Shutting down
 
@@ -219,6 +276,11 @@ nutng.yaml:4: UPS rack (usbhid driver): unknown option "serail" (did you mean "s
 | `drivers/usbhid/quirks` | Field-to-variable mappings per vendor |
 | `drivers/simulator` | Simulated UPS |
 | `internal/policy` | Shutdown policy: when and how to shut down |
+| `internal/plugins` | Plugin loader and supervisor |
+| `internal/scaffold` | `nutng plugin new` templates and the Python SDK |
+| `pkg/plugin` | Go SDK for plugins |
+| `plugins/mqtt` | MQTT output plugin |
+| `drivers/execdriver` | `exec` driver: any program that prints UPS variables |
 | `internal/nutimport` | `nutng import-nut` |
 | `drivers/nutclient` | `nut` driver: a UPS on another nutng or NUT upsd |
 | `outputs/rest` | REST/JSON API and event stream |
@@ -234,4 +296,6 @@ go vet ./...
 NUTNG_HW=1 go test ./drivers/usbhid -run TestHardware -v   # with a UPS attached
 go build -o nutng ./cmd/nutng && test/integration/nut-clients.sh ./nutng   # Linux
 test/integration/shutdown.sh ./nutng   # Linux; shuts nothing down (marker files only)
+NUTNG_TEST_PYTHON=python3 go test ./internal/scaffold   # Python plugin SDK (needs grpcio)
+scripts/gen.sh                         # after changing proto/
 ```

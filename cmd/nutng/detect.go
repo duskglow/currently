@@ -100,7 +100,9 @@ func (a *app) detectCmd() *cobra.Command {
 		Short: "List the UPSes nutng can find",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			list, errs := discover(cmd.Context(), registry.Builtin(), map[string]bool{})
+			reg, pm := a.registry(cmd.Context(), nil)
+			defer pm.Close()
+			list, errs := discover(cmd.Context(), reg, map[string]bool{})
 			out := cmd.OutOrStdout()
 			if asJSON {
 				if list == nil {
@@ -158,7 +160,9 @@ REST API on this machine only.`,
 			interactive := !yes && a.stdin == os.Stdin && term.IsTerminal(os.Stdin)
 			ask := &prompter{in: bufio.NewReader(a.stdin), out: out}
 
-			list, errs := discover(cmd.Context(), registry.Builtin(), map[string]bool{})
+			reg, pm := a.registry(cmd.Context(), nil)
+			defer pm.Close()
+			list, errs := discover(cmd.Context(), reg, map[string]bool{})
 			for _, err := range errs {
 				fmt.Fprintln(a.stderr, "nutng:", err)
 			}

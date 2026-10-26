@@ -22,11 +22,13 @@ import (
 
 	"github.com/nut-ng/nut-ng/internal/config"
 	"github.com/nut-ng/nut-ng/internal/core"
+	"github.com/nut-ng/nut-ng/internal/plugins"
 	"github.com/nut-ng/nut-ng/internal/policy"
 	"github.com/nut-ng/nut-ng/internal/registry"
 	"github.com/nut-ng/nut-ng/outputs/nutproto"
 	"github.com/nut-ng/nut-ng/outputs/prometheus"
 	"github.com/nut-ng/nut-ng/outputs/rest"
+	"github.com/nut-ng/nut-ng/pkg/sdk"
 )
 
 // Options for Run.
@@ -40,6 +42,8 @@ type Options struct {
 	Ready func(controlPath string)
 	// Executor replaces the one that really runs shutdown commands (tests).
 	Executor policy.Executor
+	// Plugins, if set, is reported by GET /api/v1/plugins.
+	Plugins *plugins.Manager
 }
 
 // Run serves until ctx is cancelled. The config must already be validated.
@@ -118,16 +122,17 @@ func Run(ctx context.Context, o Options) error {
 	}
 	engine := policy.New(PolicyConfig(cfg), popts)
 	shutdownStatus := func() any { return engine.Status() }
+	pluginStatus := func() any { return o.Plugins.Statuses() }
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return c.Run(ctx) })
 	g.Go(func() error { return engine.Run(ctx) })
 	g.Go(func() error {
-		h := rest.NewHandler(c, rest.Options{Trusted: true, Version: o.Version, Shutdown: shutdownStatus, Log: log.With("api", "control")})
+		h := rest.NewHandler(c, rest.Options{Trusted: true, Version: o.Version, Shutdown: shutdownStatus, Plugins: pluginStatus, Log: log.With("api", "control")})
 		return rest.Serve(ctx, ctl, h)
 	})
 	if httpLn != nil {
-		api := rest.NewHandler(c, rest.Options{Token: cfg.Token(), Version: o.Version, Shutdown: shutdownStatus, Log: log.With("api", "http")})
+		api := rest.NewHandler(c, rest.Options{Token: cfg.Token(), Version: o.Version, Shutdown: shutdownStatus, Plugins: pluginStatus, Log: log.With("api", "http")})
 		mux := http.NewServeMux()
 		mux.Handle("/", api)
 		if cfg.Listen.Metrics == "" {
@@ -147,6 +152,28 @@ func Run(ctx context.Context, o Options) error {
 		log.Info("NUT protocol listening", "addr", nutLn.Addr().String(), "users", len(cfg.Users), "starttls", nutTLS != nil)
 		g.Go(func() error { return nutSrv.Serve(ctx, nutLn) })
 	}
+	used := map[string]bool{}
+	for _, u := range cfg.UPS {
+		used[u.Driver] = true
+	}
+	for name, oc := range cfg.Outputs {
+		used[oc.PluginName(name)] = true
+	}
+	o.Plugins.StopUnused(used)
+
+	for _, name := range cfg.OutputNames() {
+		oc := cfg.Outputs[name]
+		out, ok := o.Registry.Output(oc.PluginName(name))
+		if !ok {
+			return fmt.Errorf("output %s: no output plugin named %q", name, oc.PluginName(name))
+		}
+		var host sdk.Host = c
+		if !oc.AllowControl {
+			host = plugins.ReadOnlyHost{Host: c}
+		}
+		olog := log.With("output", name)
+		g.Go(func() error { superviseOutput(ctx, out, host, oc.Options, olog); return nil })
+	}
 	if cfg.Shutdown == nil {
 		log.Info("no shutdown policy: nutng will not shut this computer down (add a shutdown section to nutng.yaml)")
 	} else if why := policy.BuiltinBlocked(); why != "" && cfg.Shutdown.Command == "" {
@@ -165,6 +192,30 @@ func Run(ctx context.Context, o Options) error {
 	err = g.Wait()
 	log.Info("nutng stopped")
 	return err
+}
+
+// superviseOutput runs an output until ctx ends, restarting it with
+// backoff when it fails. A failing output never stops nutng.
+func superviseOutput(ctx context.Context, out sdk.Output, host sdk.Host, cfg sdk.Config, log *slog.Logger) {
+	backoff := time.Second
+	for {
+		started := time.Now()
+		log.Info("output started", "plugin", out.Info().Name)
+		err := out.Run(ctx, host, cfg, log)
+		if ctx.Err() != nil {
+			return
+		}
+		if time.Since(started) > time.Minute {
+			backoff = time.Second
+		}
+		log.Warn("output stopped; restarting it", "error", err, "retry_in", backoff)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(backoff):
+		}
+		backoff = min(backoff*2, time.Minute)
+	}
 }
 
 // listenControl opens the control socket at path, or at the first usable

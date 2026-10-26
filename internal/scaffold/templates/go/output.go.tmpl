@@ -1,0 +1,68 @@
+// Command nutng-output-{{.Name}} is a nutng output plugin.
+//
+// Build it, put the executable in a nutng plugin directory (see
+// `nutng plugin list`), and use it in nutng.yaml:
+//
+//	outputs:
+//	  {{.Name}}:
+//	    target: example
+package main
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+
+	"github.com/nut-ng/nut-ng/pkg/plugin"
+	"github.com/nut-ng/nut-ng/pkg/sdk"
+)
+
+type output struct{}
+
+func (output) Info() sdk.Info {
+	return sdk.Info{Name: "{{.Name}}", Version: "0.1.0", Description: "TODO: where this output sends UPS data"}
+}
+
+type options struct {
+	Target string `yaml:"target"`
+}
+
+func (output) ValidateConfig(cfg sdk.Config) error {
+	var o options
+	if err := cfg.Decode(&o); err != nil {
+		return err
+	}
+	if o.Target == "" {
+		return errors.New("target is required")
+	}
+	return nil
+}
+
+// Run sends UPS data until ctx ends. Returning an error makes nutng start
+// it again with backoff. host.RunCommand works only with allow_control.
+func (output) Run(ctx context.Context, host sdk.Host, cfg sdk.Config, log *slog.Logger) error {
+	var o options
+	if err := cfg.Decode(&o); err != nil {
+		return err
+	}
+	for _, u := range host.ListUPS() {
+		log.Info("UPS", "name", u.Name, "status", u.Value("ups.status"))
+	}
+	events := host.Subscribe(ctx, 256)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case e, ok := <-events:
+			if !ok {
+				return errors.New("lost the connection to nutng")
+			}
+			if e.Type.Notable() {
+				// TODO: send it to o.Target.
+				log.Info("event", "ups", e.UPS, "type", e.Type, "message", e.Message)
+			}
+		}
+	}
+}
+
+func main() { plugin.ServeOutput(output{}) }

@@ -39,7 +39,9 @@ type Options struct {
 	// Shutdown, if set, returns the shutdown policy's status for
 	// GET /api/v1/shutdown.
 	Shutdown func() any
-	Log      *slog.Logger
+	// Plugins, if set, returns the plugin list for GET /api/v1/plugins.
+	Plugins func() any
+	Log     *slog.Logger
 }
 
 type handler struct {
@@ -73,6 +75,15 @@ func NewHandler(host sdk.Host, opts Options) http.Handler {
 	h.mux.HandleFunc("POST /api/v1/ups/{ups}/commands/{cmd}", h.mutation(h.runCommand))
 	h.mux.HandleFunc("GET /api/v1/ups/{ups}/history/{var}", h.history)
 	h.mux.HandleFunc("GET /api/v1/events", h.events)
+	h.mux.HandleFunc("GET /api/v1/plugins", func(w http.ResponseWriter, _ *http.Request) {
+		var list any = []any{}
+		if h.opts.Plugins != nil {
+			if l := h.opts.Plugins(); l != nil {
+				list = l
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"plugins": list})
+	})
 	h.mux.HandleFunc("GET /api/v1/shutdown", func(w http.ResponseWriter, _ *http.Request) {
 		if h.opts.Shutdown == nil {
 			writeJSON(w, http.StatusOK, map[string]any{"enabled": false, "state": "disabled"})

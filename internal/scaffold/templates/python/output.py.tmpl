@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""nutng output plugin "{{.Name}}", created by `nutng plugin new`.
+
+Add it to nutng.yaml:
+
+    plugins:
+      commands:
+        - ["{{.Python}}", "{{.Script}}"]
+    outputs:
+      {{.Name}}:
+        target: example
+"""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import nutng_plugin  # noqa: E402
+
+
+class Output(nutng_plugin.Output):
+    name = "{{.Name}}"
+    version = "0.1.0"
+    description = "TODO: where this output sends UPS data"
+
+    def validate(self, config):
+        return [] if "target" in config else ["target is required"]
+
+    def run(self, host, config, stop):
+        for ups in host.list_ups():
+            nutng_plugin.log("UPS", name=ups["name"], status=ups["vars"].get("ups.status"))
+        for event in host.events():
+            if stop.is_set():
+                return
+            if event["type"] != "update":
+                # TODO: send it to config["target"].
+                nutng_plugin.log("event", ups=event["ups"], type=event["type"], message=event["message"])
+
+
+if __name__ == "__main__":
+    nutng_plugin.serve_output(Output())

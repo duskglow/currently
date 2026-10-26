@@ -51,6 +51,36 @@ jobs:
           export GOOS="${TARGET%/*}" GOARCH="${TARGET#*/}"
           go build -o /dev/null ./cmd/nutng
 
+  plugins:
+    # Plugins as separate processes, including the Python SDK.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r internal/scaffold/templates/python/requirements.txt
+      - run: NUTNG_TEST_PYTHON=$(which python) go test ./internal/plugins ./internal/scaffold ./plugins/...
+      - run: go build -o /dev/null ./plugins/mqtt
+
+  generated:
+    # gen/ and the Python SDK must match proto/.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install grpcio-tools==1.85.0
+      - run: PYTHON=python bash scripts/gen.sh
+      - run: git diff --exit-code -- gen internal/scaffold/python examples/plugins
+
   nut-integration:
     # Against the real NUT: upsc/upscmd/upsrw/upsmon clients, and a
     # cross-machine shutdown rehearsal with upsmon and upsd. Shutdown

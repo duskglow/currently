@@ -15,7 +15,6 @@ import (
 	"github.com/nut-ng/nut-ng/drivers/usbhid"
 	"github.com/nut-ng/nut-ng/internal/config"
 	"github.com/nut-ng/nut-ng/internal/daemon"
-	"github.com/nut-ng/nut-ng/internal/registry"
 	"github.com/nut-ng/nut-ng/internal/svcmgr"
 	"github.com/nut-ng/nut-ng/internal/version"
 )
@@ -41,17 +40,6 @@ mains power fails for one minute every three minutes.`,
 			if demo {
 				cfg.AddDemo()
 			}
-			autodetected := 0
-			if !found && len(cfg.UPS) == 0 && !demo {
-				// Zero-config: monitor every USB UPS attached.
-				list, _ := discover(cmd.Context(), registry.Builtin(), map[string]bool{})
-				for _, f := range list {
-					if f.Driver == usbhid.DriverName {
-						cfg.AddUPS(f.UPS, config.UPS{Driver: f.Driver, Description: f.Name, Options: f.Config})
-						autodetected++
-					}
-				}
-			}
 			if logLevel != "" {
 				cfg.Log.Level = logLevel
 			}
@@ -60,7 +48,21 @@ mains power fails for one minute every three minutes.`,
 			}
 			asService := !svcmgr.Interactive()
 			log := newLogger(cfg.Log, asService)
-			if err := cfg.Validate(registry.Builtin()); err != nil {
+			reg, pm := loadRegistry(cmd.Context(), cfg, log.With("component", "plugins"))
+			defer pm.Close()
+
+			autodetected := 0
+			if !found && len(cfg.UPS) == 0 && !demo {
+				// Zero-config: monitor every USB UPS attached.
+				list, _ := discover(cmd.Context(), reg, map[string]bool{})
+				for _, f := range list {
+					if f.Driver == usbhid.DriverName {
+						cfg.AddUPS(f.UPS, config.UPS{Driver: f.Driver, Description: f.Name, Options: f.Config})
+						autodetected++
+					}
+				}
+			}
+			if err := cfg.Validate(reg); err != nil {
 				if asService {
 					log.Error("the config has problems", "error", err)
 				}
@@ -77,7 +79,8 @@ mains power fails for one minute every three minutes.`,
 			run := func(ctx context.Context) error {
 				return daemon.Run(ctx, daemon.Options{
 					Config:   cfg,
-					Registry: registry.Builtin(),
+					Registry: reg,
+					Plugins:  pm,
 					Log:      log,
 					Version:  version.String(),
 				})

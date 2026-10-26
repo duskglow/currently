@@ -31,12 +31,17 @@ type Config struct {
 	// Shutdown is the shutdown policy. Without it, nutng only monitors and
 	// never shuts this computer down.
 	Shutdown *Shutdown `yaml:"shutdown,omitempty"`
-	Log      Log       `yaml:"log"`
+	// Outputs are output plugins to run, by name.
+	Outputs map[string]Output `yaml:"outputs,omitempty"`
+	Plugins Plugins           `yaml:"plugins,omitempty"`
+	Log     Log               `yaml:"log"`
 
 	// Path is the file the config was loaded from; empty for defaults.
 	Path string `yaml:"-"`
 	// Order lists UPS names in the order they appear in the file.
 	Order []string `yaml:"-"`
+	// OutputOrder lists output names in file order.
+	OutputOrder []string `yaml:"-"`
 
 	lines map[string]int // dotted key path → line number
 }
@@ -99,6 +104,46 @@ func (u User) Secret() string {
 		return os.Getenv(u.PasswordEnv)
 	}
 	return u.Password
+}
+
+// Output is one entry under `outputs:`. Keys other than the ones below are
+// passed to the plugin as its options.
+type Output struct {
+	// Plugin names the output plugin; it defaults to the entry's name.
+	Plugin string `yaml:"plugin,omitempty"`
+	// AllowControl lets the plugin run commands, change variables and set
+	// FSD. Without it, the plugin can only read.
+	AllowControl bool       `yaml:"allow_control,omitempty"`
+	Options      sdk.Config `yaml:",inline"`
+}
+
+// Plugins says where to find plugins besides the default directories.
+type Plugins struct {
+	// Dirs are searched for nutng-driver-* and nutng-output-* executables
+	// before the default directories.
+	Dirs []string `yaml:"dirs,omitempty"`
+	// Commands start plugins that need an interpreter, such as
+	// ["python3", "/opt/nutng/plugins/mydriver.py"].
+	Commands [][]string `yaml:"commands,omitempty"`
+}
+
+// OutputNames returns output names in file order.
+func (c *Config) OutputNames() []string {
+	names := slices.Clone(c.OutputOrder)
+	for name := range c.Outputs {
+		if !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// PluginName returns the plugin an output entry uses.
+func (o Output) PluginName(entry string) string {
+	if o.Plugin != "" {
+		return o.Plugin
+	}
+	return entry
 }
 
 // Shutdown decides when to shut this computer down, and how.
@@ -219,7 +264,8 @@ const (
 
 // knownKeys lists the keys allowed in each fixed section, for typo hints.
 var knownKeys = map[string][]string{
-	"": {"ups", "listen", "api", "users", "shutdown", "log"},
+	"":        {"ups", "listen", "api", "users", "shutdown", "outputs", "plugins", "log"},
+	"plugins": {"dirs", "commands"},
 	"shutdown": {"ups", "min_supplies", "when", "dead_time", "wait_for_secondaries", "final_delay",
 		"hooks", "hook_timeout", "command", "power_off_ups", "ups_off_delay", "dry_run"},
 	"shutdown.when":  {"low_battery", "on_battery_for", "runtime_below", "charge_below"},
@@ -343,7 +389,11 @@ func (c *Config) walk(n *yaml.Node, path string, problems *[]Problem) {
 		case path == "ups":
 			c.Order = append(c.Order, key.Value)
 			c.walk(val, full, problems) // record option lines; options are checked by the driver
-		case path == "" || path == "listen" || path == "users" || path == "shutdown" || strings.HasPrefix(full, "ups."):
+		case path == "outputs":
+			c.OutputOrder = append(c.OutputOrder, key.Value)
+			c.walk(val, full, problems)
+		case path == "" || path == "listen" || path == "users" || path == "shutdown" || path == "plugins" ||
+			strings.HasPrefix(full, "ups.") || strings.HasPrefix(full, "outputs."):
 			c.walk(val, full, problems)
 		}
 	}
@@ -484,6 +534,32 @@ func (c *Config) Validate(reg *registry.Registry) error {
 			if strings.TrimSpace(h) == "" {
 				add("shutdown.hooks", "shutdown.hooks[%d] is empty", i)
 			}
+		}
+	}
+
+	outputs := reg.OutputNames()
+	for _, name := range c.OutputNames() {
+		o := c.Outputs[name]
+		key := "outputs." + name
+		plugin := o.PluginName(name)
+		out, ok := reg.Output(plugin)
+		if !ok {
+			hint := "no output plugins are installed"
+			if len(outputs) > 0 {
+				hint = "installed: " + strings.Join(outputs, ", ")
+			}
+			add(key, "output %s: no output plugin named %q%s (%s; see `nutng plugin list`)", name, plugin, suggest.DidYouMean(plugin, outputs), hint)
+			continue
+		}
+		if err := out.ValidateConfig(o.Options); err != nil {
+			for _, msg := range strings.Split(err.Error(), "\n") {
+				add(c.optionPath(key, msg), "output %s (%s plugin): %s", name, plugin, msg)
+			}
+		}
+	}
+	for i, cmd := range c.Plugins.Commands {
+		if len(cmd) == 0 || strings.TrimSpace(cmd[0]) == "" {
+			add("plugins.commands", "plugins.commands[%d] is empty", i)
 		}
 	}
 

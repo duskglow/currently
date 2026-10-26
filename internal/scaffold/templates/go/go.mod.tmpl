@@ -1,0 +1,9 @@
+module nutng-{{.Kind}}-{{.Name}}
+
+go 1.26
+
+require github.com/nut-ng/nut-ng {{.NutngVersion}}
+{{if .SDKPath}}
+// Build against a local nut-ng checkout.
+replace github.com/nut-ng/nut-ng => {{printf "%q" .SDKPath}}
+{{end}}

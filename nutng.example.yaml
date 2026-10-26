@@ -12,6 +12,16 @@ ups:
     # id: "0764:0601"          # or by vendor:product ID
     # interval: 2s             # how often to read the UPS
 
+  # nas:
+  #   driver: nut              # a UPS on another nutng or NUT upsd
+  #   host: nas.local
+  #   ups: ups
+  #   username: mon
+  #   password_env: NUTNG_MON_PASSWORD
+  # other:
+  #   driver: exec             # any program that prints UPS variables
+  #   command: upsc ups@nas.local
+
   lab:
     driver: simulator          # a simulated UPS, for trying things out
     description: Simulated UPS for testing
@@ -55,6 +65,17 @@ listen:
 #   ups_off_delay: 60s
 #   command: ""                # replace the OS shutdown command
 #   dry_run: false             # log each step without doing it
+
+# Output plugins (see `nutng plugin list`). Outputs only read unless
+# allow_control is set.
+# outputs:
+#   mqtt:
+#     broker: tcp://192.168.1.5:1883
+#     allow_control: false
+# plugins:
+#   dirs: [/opt/nutng/plugins]
+#   commands:
+#     - ["python3", "/opt/nutng/myups/plugin.py"]
 
 api:
   # Commands and variable changes over HTTP need this bearer token.

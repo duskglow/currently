@@ -6,6 +6,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/nut-ng/nut-ng/drivers/execdriver"
 	"github.com/nut-ng/nut-ng/drivers/nutclient"
 	"github.com/nut-ng/nut-ng/drivers/simulator"
 	"github.com/nut-ng/nut-ng/drivers/usbhid"
@@ -30,6 +31,7 @@ func Builtin() *Registry {
 	r.AddDriver(usbhid.New())
 	r.AddDriver(usbhid.NewReplay())
 	r.AddDriver(nutclient.New())
+	r.AddDriver(execdriver.New())
 	r.AddDriver(simulator.New())
 	return r
 }
@@ -42,6 +44,19 @@ func (r *Registry) AddDriver(d sdk.Driver) {
 	}
 	r.drivers[name] = d
 }
+
+// HasDriver reports whether a driver or output named name exists.
+func (r *Registry) HasDriver(name string) bool {
+	_, d := r.drivers[name]
+	_, o := r.outputs[name]
+	return d || o
+}
+
+// HasOutput reports whether an output or driver named name exists.
+func (r *Registry) HasOutput(name string) bool { return r.HasDriver(name) }
+
+// OutputNames returns the registered output names, sorted.
+func (r *Registry) OutputNames() []string { return slices.Sorted(maps.Keys(r.outputs)) }
 
 // Driver looks up a driver by name.
 func (r *Registry) Driver(name string) (sdk.Driver, bool) {

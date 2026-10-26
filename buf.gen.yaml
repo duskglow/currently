@@ -1,10 +1,11 @@
-# Go code is generated when the external plugin loader lands (milestone 5):
-#   buf generate
+# Regenerate the Go code in gen/ (and the Python SDK) after changing
+# proto/ with scripts/gen.sh.
 version: v2
+clean: true
 plugins:
-  - remote: buf.build/protocolbuffers/go
+  - local: protoc-gen-go
     out: gen
     opt: paths=source_relative
-  - remote: buf.build/grpc/go
+  - local: protoc-gen-go-grpc
     out: gen
     opt: paths=source_relative

@@ -1,0 +1,16 @@
+# nutng-{{.Kind}}-{{.Name}}
+
+A nutng {{.Kind}} plugin, created by `nutng plugin new`.
+
+```sh
+go mod tidy
+go build -o nutng-{{.Kind}}-{{.Name}}{{.Exe}}
+```
+
+Copy the executable to a plugin directory (`nutng plugin list` shows them),
+then check it with `nutng plugin info {{.Name}}`.
+{{if not .SDKPath}}
+nut-ng is not published as a Go module yet. Until it is, add a replace
+line to go.mod that points at a nut-ng checkout, or create the plugin with
+`nutng plugin new --sdk /path/to/nut-ng`.
+{{end}}
