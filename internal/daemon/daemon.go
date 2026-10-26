@@ -5,17 +5,21 @@ package daemon
 import (
 	"context"
 	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net"
 	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -28,6 +32,7 @@ import (
 	"github.com/nut-ng/nut-ng/outputs/nutproto"
 	"github.com/nut-ng/nut-ng/outputs/prometheus"
 	"github.com/nut-ng/nut-ng/outputs/rest"
+	"github.com/nut-ng/nut-ng/outputs/snmp"
 	"github.com/nut-ng/nut-ng/pkg/sdk"
 )
 
@@ -71,11 +76,15 @@ func Run(ctx context.Context, o Options) error {
 	}
 	defer ctl.Close()
 	var httpLn, metricsLn, nutLn net.Listener
+	var snmpConn net.PacketConn
 	closeAll := func() {
 		for _, ln := range []net.Listener{httpLn, metricsLn, nutLn} {
 			if ln != nil {
 				ln.Close()
 			}
+		}
+		if snmpConn != nil {
+			snmpConn.Close()
 		}
 	}
 	defer closeAll()
@@ -101,6 +110,16 @@ func Run(ctx context.Context, o Options) error {
 	if cfg.Listen.NUT != "" {
 		if nutLn, err = listenTCP(cfg.Listen.NUT, "the NUT protocol", "listen.nut", "NUT's upsd or another nutng"); err != nil {
 			return err
+		}
+	}
+
+	var agent *snmp.Agent
+	if s := cfg.Listen.SNMP; s != nil {
+		if snmpConn, err = listenUDP(s.Addr); err != nil {
+			return err
+		}
+		if agent, err = snmp.New(c, SNMPOptions(s, o.Version, log.With("output", "snmp"))); err != nil {
+			return fmt.Errorf("listen.snmp: %w", err)
 		}
 	}
 
@@ -151,6 +170,12 @@ func Run(ctx context.Context, o Options) error {
 	if nutSrv != nil {
 		log.Info("NUT protocol listening", "addr", nutLn.Addr().String(), "users", len(cfg.Users), "starttls", nutTLS != nil)
 		g.Go(func() error { return nutSrv.Serve(ctx, nutLn) })
+	}
+	if agent != nil {
+		s := cfg.Listen.SNMP
+		log.Info("SNMP agent listening", "addr", snmpConn.LocalAddr().String(), "v2c", s.Secret() != "" || len(s.Users) == 0,
+			"v3_users", len(s.Users), "traps", len(s.Traps))
+		g.Go(func() error { return agent.Serve(ctx, snmpConn) })
 	}
 	used := map[string]bool{}
 	for _, u := range cfg.UPS {
@@ -277,6 +302,43 @@ func listenUnix(path string) (net.Listener, error) {
 }
 
 // listenTCP opens a TCP listener, explaining the usual causes of failure.
+// SNMPOptions converts the listen.snmp section to agent options.
+func SNMPOptions(s *config.SNMP, version string, log *slog.Logger) snmp.Options {
+	o := snmp.Options{Community: s.Secret(), DefaultUPS: s.UPS, Location: s.Location, Contact: s.Contact,
+		Version: version, Log: log}
+	if o.Community == "" && len(s.Users) == 0 {
+		o.Community = "public"
+	}
+	if s.EngineID != "" {
+		o.EngineID, _ = hex.DecodeString(strings.TrimPrefix(strings.ReplaceAll(s.EngineID, ":", ""), "0x"))
+	}
+	for _, name := range slices.Sorted(maps.Keys(s.Users)) {
+		u := s.Users[name]
+		auth, priv := u.Secrets()
+		o.Users = append(o.Users, snmp.User{Name: name, Auth: u.Auth, AuthPassword: auth, Privacy: u.Privacy, PrivacyPassword: priv})
+	}
+	for _, t := range s.Traps {
+		community := t.Community
+		if community == "" {
+			community = "public"
+		}
+		o.Traps = append(o.Traps, snmp.TrapTarget{Addr: config.TrapAddr(t.Target), Community: community})
+	}
+	return o
+}
+
+func listenUDP(addr string) (net.PacketConn, error) {
+	pc, err := net.ListenPacket("udp", addr)
+	if err == nil {
+		return pc, nil
+	}
+	hint := "is snmpd or another nutng using it? Choose another port with listen.snmp.addr"
+	if errors.Is(err, os.ErrPermission) || errors.Is(err, syscall.EACCES) {
+		hint = "ports below 1024 need root (on Linux, or the CAP_NET_BIND_SERVICE capability); use a port such as 1161"
+	}
+	return nil, fmt.Errorf("cannot serve the SNMP agent on %s (listen.snmp.addr): %w; %s", addr, err, hint)
+}
+
 func listenTCP(addr, what, key, usual string) (net.Listener, error) {
 	ln, err := net.Listen("tcp", addr)
 	if err == nil {

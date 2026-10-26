@@ -175,9 +175,8 @@ func (d *fakeDriver) Open(context.Context, sdk.Config, *slog.Logger) (sdk.Device
 }
 
 type fakeDevice struct {
-	mu   sync.Mutex
-	ran  []string
-	vars map[string]string
+	mu  sync.Mutex
+	ran []string
 }
 
 func (f *fakeDevice) Watch(ctx context.Context, sink func(sdk.Update)) error {

@@ -25,6 +25,24 @@ jobs:
         if: runner.os != 'Windows'
       - run: go test ./...
         if: runner.os == 'Windows'
+      - name: USB transport without cgo (purego)
+        if: runner.os == 'macOS'
+        run: CGO_ENABLED=0 go test -count=1 ./drivers/usbhid/...
+
+  freebsd:
+    # The FreeBSD USB transport and the rest of the unit tests, in a VM.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14.3"
+          usesh: true
+          prepare: pkg install -y go git
+          run: |
+            go version
+            go vet ./drivers/usbhid/... ./outputs/... ./internal/...
+            go test ./drivers/... ./outputs/... ./internal/config ./internal/core ./internal/policy
 
   cross-build:
     runs-on: ubuntu-latest
@@ -34,9 +52,13 @@ jobs:
           - linux/amd64
           - linux/arm64
           - linux/arm
+          - linux/386
           - freebsd/amd64
+          - freebsd/arm64
+          - darwin/amd64
           - darwin/arm64
           - windows/amd64
+          - windows/arm64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -95,6 +117,63 @@ jobs:
       - run: go build -o nutng ./cmd/nutng
       - run: bash test/integration/nut-clients.sh ./nutng
       - run: bash test/integration/shutdown.sh ./nutng
+
+  snmp-integration:
+    # The SNMP agent against net-snmp's snmpget/snmpwalk and snmptrapd.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: sudo apt-get update && sudo apt-get install -y snmp snmptrapd
+      - run: go build -o nutng ./cmd/nutng
+      - run: bash test/integration/snmp.sh ./nutng
+
+  packaging:
+    # A snapshot release (archives and Linux packages), then the .deb
+    # installed and started for real.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --snapshot --clean --skip=docker,sign,sbom
+      - name: Install the .deb
+        run: |
+          sudo mkdir -p /etc/nutng
+          printf 'ups:\n  sim: {driver: simulator}\nlisten:\n  snmp: 127.0.0.1:1161\n' | sudo tee /etc/nutng/nutng.yaml
+          sudo dpkg -i dist/nutng_*_linux_amd64.deb
+          sleep 3
+          systemctl is-active nutng
+          nutng status
+          nutng plugin list | grep mqtt
+          sudo dpkg -r nutng
+          ! systemctl is-active nutng
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snapshot
+          path: dist/*_windows_amd64.zip
+
+  msi:
+    needs: packaging
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: snapshot
+          path: dist
+      - shell: pwsh
+        run: |
+          Expand-Archive (Get-ChildItem dist\*_windows_amd64.zip).FullName -DestinationPath dist\win
+          packaging/windows/build-msi.ps1 -Version 0.0.1 -BinDir dist/win -Out dist/nutng.msi
 
   lint:
     runs-on: ubuntu-latest

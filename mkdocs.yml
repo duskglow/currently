@@ -1,0 +1,42 @@
+site_name: nut-ng
+site_description: Easy UPS monitoring and safe shutdown, queryable by your monitoring tools
+repo_url: https://github.com/nut-ng/nut-ng
+edit_uri: edit/main/docs/
+theme:
+  name: material
+  features: [navigation.sections, navigation.top, content.code.copy, search.suggest]
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle: { icon: material/brightness-7, name: Dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle: { icon: material/brightness-4, name: Light mode }
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc: { permalink: true }
+  - pymdownx.superfences
+  - pymdownx.tabbed: { alternate_style: true }
+nav:
+  - Home: index.md
+  - Getting started:
+      - Install: install.md
+      - Quick start: quickstart.md
+      - Moving from NUT: migrating.md
+  - Guides:
+      - Configuration reference: configuration.md
+      - Shutting down: shutdown.md
+      - UPS drivers: drivers.md
+      - Platforms: platforms.md
+      - Troubleshooting: troubleshooting.md
+  - Monitoring tools:
+      - Overview: outputs/index.md
+      - NUT protocol: outputs/nut.md
+      - SNMP: outputs/snmp.md
+      - Prometheus: outputs/prometheus.md
+      - REST API: outputs/rest.md
+      - MQTT: outputs/mqtt.md
+  - Plugins: plugins.md
+  - Design: PLAN.md

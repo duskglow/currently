@@ -3,7 +3,9 @@ module github.com/nut-ng/nut-ng
 go 1.26.0
 
 require (
+	github.com/ebitengine/purego v0.11.2
 	github.com/eclipse/paho.mqtt.golang v1.5.1
+	github.com/gosnmp/gosnmp v1.47.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-plugin v1.8.0
 	github.com/kardianos/service v1.3.0
@@ -28,7 +30,7 @@ require (
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/rs/xid v1.4.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
-	golang.org/x/net v0.57.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
 )

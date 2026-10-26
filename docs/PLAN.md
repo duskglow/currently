@@ -16,7 +16,7 @@ The repo (`nut-ng/`) is empty, so this is a greenfield design.
 
 ## Decisions (from the clarifying questions)
 
-- **Language:** Go. One static binary, `CGO_ENABLED=0` everywhere except macOS (IOKit needs cgo).
+- **Language:** Go. One static binary, `CGO_ENABLED=0` everywhere (macOS calls IOKit through purego, without cgo).
 - **Platforms in v1:** Linux (amd64/arm64/armv7), Windows, macOS, FreeBSD.
 - **Built-in input in v1:** USB HID Power Device. All other inputs are plugins.
 - **Built-in outputs in v1:** NUT protocol (3493), Prometheus `/metrics`, REST/JSON, SNMP agent (UPS-MIB). All are written against the same output-plugin interface.
@@ -62,7 +62,7 @@ The repo (`nut-ng/`) is empty, so this is a greenfield design.
   - Linux: `/dev/hidraw*` with ioctls
   - Windows: `hid.dll`/`setupapi` through `x/sys/windows`, so **no libusb or Zadig driver swap is needed**
   - FreeBSD: `hidraw`/`uhid`
-  - macOS: IOKit (cgo)
+  - macOS: IOKit, through purego (no cgo)
 - Hot-plug aware: reconnects automatically when the UPS is unplugged and plugged back in.
 - **Record/replay:** `nutng debug capture` dumps the descriptor and report traffic to a file. The `replay` driver plays it back. This drives unit tests and lets users attach a capture to bug reports.
 

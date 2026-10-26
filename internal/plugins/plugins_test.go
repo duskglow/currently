@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 	if runtime.GOOS == "windows" {
 		exe = ".exe"
 	}
-	gobin := filepath.Join(runtime.GOROOT(), "bin", "go")
+	gobin := filepath.Join(runtime.GOROOT(), "bin", "go") //nolint:staticcheck // the go running the tests, even when it is not on PATH
 	for kind, name := range map[string]string{"driver": "nutng-driver-testdriver", "output": "nutng-output-testoutput"} {
 		cmd := exec.Command(gobin, "build", "-o", filepath.Join(dir, name+exe), "./testdata/"+kind)
 		if out, err := cmd.CombinedOutput(); err != nil {

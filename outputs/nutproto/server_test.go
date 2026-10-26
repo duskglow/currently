@@ -113,7 +113,7 @@ func dial(t *testing.T, addr string) *client {
 
 func (c *client) line() string {
 	c.t.Helper()
-	c.nc.SetReadDeadline(time.Now().Add(3 * time.Second))
+	_ = c.nc.SetReadDeadline(time.Now().Add(3 * time.Second))
 	s, err := c.r.ReadString('\n')
 	if err != nil {
 		c.t.Fatalf("read: %v", err)

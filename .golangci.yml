@@ -1,0 +1,7 @@
+version: "2"
+linters:
+  exclusions:
+    # Unchecked Close, Flush and fmt.Fprint* errors (as golangci-lint v1
+    # excluded by default), and generated code.
+    presets: [std-error-handling, common-false-positives]
+    generated: lax

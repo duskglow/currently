@@ -428,7 +428,7 @@ func yamlValue(v string) string {
 
 func yamlKey(k string) string {
 	for _, r := range k {
-		if !(r == '_' || r == '-' || r == '.' || r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z') {
+		if r != '_' && r != '-' && r != '.' && (r < '0' || r > '9') && (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') {
 			return strconv.Quote(k)
 		}
 	}

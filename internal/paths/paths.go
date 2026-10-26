@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 )
 
@@ -45,7 +46,15 @@ func PluginDirs() []string {
 	default:
 		dirs = append(dirs, "/usr/local/lib/nutng/plugins")
 	}
-	return dirs
+	// Packages install nutng in its plugin directory's parent, so the
+	// first entry can repeat a later one.
+	var out []string
+	for _, d := range dirs {
+		if !slices.Contains(out, d) {
+			out = append(out, d)
+		}
+	}
+	return out
 }
 
 // ConfigDir is the directory of the config file, which also holds

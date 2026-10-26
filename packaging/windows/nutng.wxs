@@ -1,0 +1,52 @@
+<!--
+  WiX Toolset (v5) source for the nut-ng MSI. Build it with build-msi.ps1.
+
+  The installer puts nutng.exe (and plugins) in C:\Program Files\nutng,
+  adds that folder to PATH, and installs and starts the "nutng" service,
+  the same service `nutng service install` creates. The config lives in
+  C:\ProgramData\nutng\nutng.yaml (write it with `nutng init`); without
+  one, nutng finds USB UPSes by itself. Uninstalling keeps the config.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Package Name="nut-ng" Manufacturer="nut-ng" Version="$(Version)"
+           UpgradeCode="E32A154F-EF7F-4641-A694-DBE673BD1831" Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of nut-ng is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/nut-ng/nut-ng" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="nutng">
+        <Directory Id="PLUGINSFOLDER" Name="plugins" />
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="nut-ng">
+      <Component Directory="INSTALLFOLDER">
+        <File Id="NutngExe" Source="$(BinDir)\nutng.exe" KeyPath="yes" />
+        <ServiceInstall Name="nutng" DisplayName="nut-ng UPS monitor"
+                        Description="Monitors UPSes and serves their state to monitoring tools (nut-ng)"
+                        Type="ownProcess" Start="auto" ErrorControl="normal" Account="LocalSystem"
+                        Arguments="serve">
+          <util:ServiceConfig FirstFailureActionType="restart" SecondFailureActionType="restart"
+                              ThirdFailureActionType="restart" RestartServiceDelayInSeconds="5"
+                              ResetPeriodInDays="1" />
+        </ServiceInstall>
+        <ServiceControl Id="NutngService" Name="nutng" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+        <Environment Id="NutngPath" Name="PATH" Value="[INSTALLFOLDER]" Part="last" Action="set" System="yes" />
+      </Component>
+      <Component Directory="INSTALLFOLDER">
+        <File Id="ExampleConfig" Source="$(SrcDir)\nutng.example.yaml" KeyPath="yes" />
+      </Component>
+      <Component Directory="INSTALLFOLDER">
+        <File Id="Readme" Source="$(SrcDir)\README.md" KeyPath="yes" />
+      </Component>
+      <Component Directory="INSTALLFOLDER">
+        <File Id="License" Source="$(SrcDir)\LICENSE" KeyPath="yes" />
+      </Component>
+      <Component Directory="PLUGINSFOLDER">
+        <File Id="MqttPlugin" Source="$(BinDir)\plugins\nutng-output-mqtt.exe" KeyPath="yes" />
+      </Component>
+    </Feature>
+  </Package>
+</Wix>

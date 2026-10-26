@@ -71,6 +71,87 @@ type Listen struct {
 	// Control is the local socket the nutng CLI talks to. Empty selects a
 	// default path.
 	Control string `yaml:"control,omitempty"`
+	// SNMP enables the SNMP agent (UPS-MIB).
+	SNMP *SNMP `yaml:"snmp,omitempty"`
+}
+
+// SNMP configures the SNMP agent. It can also be written as just an
+// address (listen.snmp: ":1161").
+type SNMP struct {
+	// Addr is the UDP address; it defaults to DefaultSNMP.
+	Addr string `yaml:"addr,omitempty"`
+	// Community is the read-only SNMPv1/v2c community. It defaults to
+	// "public" when there are no v3 users; with v3 users and no community,
+	// v1 and v2c are off.
+	Community    string `yaml:"community,omitempty"`
+	CommunityEnv string `yaml:"community_env,omitempty"`
+	// UPS is served when a request does not name one (with the context
+	// name, or "community@ups"); it defaults to the first UPS.
+	UPS string `yaml:"ups,omitempty"`
+	// Users are SNMPv3 users.
+	Users map[string]SNMPUser `yaml:"users,omitempty"`
+	// EngineID is the SNMPv3 engine ID in hex; empty derives one from the
+	// host name.
+	EngineID string `yaml:"engine_id,omitempty"`
+	// Traps lists SNMPv2c trap receivers.
+	Traps    []SNMPTrap `yaml:"traps,omitempty"`
+	Location string     `yaml:"location,omitempty"`
+	Contact  string     `yaml:"contact,omitempty"`
+
+	off bool
+}
+
+// UnmarshalYAML accepts an address or "off" in place of the mapping.
+func (s *SNMP) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind == yaml.ScalarNode {
+		if strings.EqualFold(n.Value, "off") {
+			s.off = true
+		} else {
+			s.Addr = n.Value
+		}
+		return nil
+	}
+	type plain SNMP
+	return n.Decode((*plain)(s))
+}
+
+// Secret returns the effective community.
+func (s *SNMP) Secret() string {
+	if s.CommunityEnv != "" {
+		return os.Getenv(s.CommunityEnv)
+	}
+	return s.Community
+}
+
+// SNMPUser is an SNMPv3 user.
+type SNMPUser struct {
+	// Auth is none, md5, sha, sha224, sha256, sha384 or sha512.
+	Auth            string `yaml:"auth"`
+	AuthPassword    string `yaml:"auth_password,omitempty"`
+	AuthPasswordEnv string `yaml:"auth_password_env,omitempty"`
+	// Privacy is none or aes.
+	Privacy            string `yaml:"privacy,omitempty"`
+	PrivacyPassword    string `yaml:"privacy_password,omitempty"`
+	PrivacyPasswordEnv string `yaml:"privacy_password_env,omitempty"`
+}
+
+// Secrets returns the effective passwords.
+func (u SNMPUser) Secrets() (auth, privacy string) {
+	auth, privacy = u.AuthPassword, u.PrivacyPassword
+	if u.AuthPasswordEnv != "" {
+		auth = os.Getenv(u.AuthPasswordEnv)
+	}
+	if u.PrivacyPasswordEnv != "" {
+		privacy = os.Getenv(u.PrivacyPasswordEnv)
+	}
+	return auth, privacy
+}
+
+// SNMPTrap is a trap receiver.
+type SNMPTrap struct {
+	// Target is host or host:port (port 162 by default).
+	Target    string `yaml:"target"`
+	Community string `yaml:"community,omitempty"` // default "public"
 }
 
 // TLS names a certificate and key in PEM files.
@@ -258,6 +339,7 @@ type Log struct {
 const (
 	DefaultHTTP       = "127.0.0.1:9300"
 	DefaultNUT        = "127.0.0.1:3493"
+	DefaultSNMP       = ":1161"
 	DefaultDriver     = "usbhid"
 	DefaultStaleAfter = 30 * time.Second
 )
@@ -268,14 +350,19 @@ var knownKeys = map[string][]string{
 	"plugins": {"dirs", "commands"},
 	"shutdown": {"ups", "min_supplies", "when", "dead_time", "wait_for_secondaries", "final_delay",
 		"hooks", "hook_timeout", "command", "power_off_ups", "ups_off_delay", "dry_run"},
-	"shutdown.when":  {"low_battery", "on_battery_for", "runtime_below", "charge_below"},
-	"listen":         {"http", "nut", "nut_tls", "metrics", "control"},
+	"shutdown.when": {"low_battery", "on_battery_for", "runtime_below", "charge_below"},
+	"listen":        {"http", "nut", "nut_tls", "metrics", "control", "snmp"},
+	"listen.snmp": {"addr", "community", "community_env", "ups", "users", "engine_id", "traps",
+		"location", "contact"},
 	"listen.nut_tls": {"cert_file", "key_file"},
 	"api":            {"token", "token_env"},
 	"log":            {"level", "format"},
 }
 
 var userKeys = []string{"password", "password_env", "role"}
+
+var snmpUserKeys = []string{"auth", "auth_password", "auth_password_env", "privacy", "privacy_password",
+	"privacy_password_env"}
 
 var upsNameRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]*$`)
 
@@ -341,6 +428,14 @@ func Parse(path string, data []byte) (*Config, error) {
 	if c.Shutdown != nil {
 		c.Shutdown.fillDefaults()
 	}
+	if s := c.Listen.SNMP; s != nil {
+		switch {
+		case s.off:
+			c.Listen.SNMP = nil
+		case s.Addr == "":
+			s.Addr = DefaultSNMP
+		}
+	}
 	for name, u := range c.Users {
 		if r, ok := roleAliases[strings.ToLower(u.Role)]; ok {
 			u.Role = r
@@ -369,6 +464,9 @@ func (c *Config) walk(n *yaml.Node, path string, problems *[]Problem) {
 	if strings.HasPrefix(path, "users.") && strings.Count(path, ".") == 1 {
 		known, checked = userKeys, true
 	}
+	if strings.HasPrefix(path, "listen.snmp.users.") && strings.Count(path, ".") == 3 {
+		known, checked = snmpUserKeys, true
+	}
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		key, val := n.Content[i], n.Content[i+1]
 		full := key.Value
@@ -393,6 +491,7 @@ func (c *Config) walk(n *yaml.Node, path string, problems *[]Problem) {
 			c.OutputOrder = append(c.OutputOrder, key.Value)
 			c.walk(val, full, problems)
 		case path == "" || path == "listen" || path == "users" || path == "shutdown" || path == "plugins" ||
+			path == "listen.snmp" || path == "listen.snmp.users" ||
 			strings.HasPrefix(full, "ups.") || strings.HasPrefix(full, "outputs."):
 			c.walk(val, full, problems)
 		}
@@ -458,8 +557,8 @@ func (c *Config) Validate(reg *registry.Registry) error {
 	if n, limit := len(c.Listen.Control), MaxSocketPath(); n > limit {
 		add("listen.control", "listen.control is %d characters long, but socket paths are limited to %d; choose a shorter path", n, limit)
 	}
-	switch m := strings.ToLower(c.Listen.Metrics); {
-	case m == "" || m == "off":
+	switch m := strings.ToLower(c.Listen.Metrics); m {
+	case "", "off":
 		if m == "" && c.Listen.HTTP == "" {
 			add("listen.metrics", "metrics are served on listen.http, which is off; set listen.metrics to a host:port or \"off\"")
 		}
@@ -474,6 +573,9 @@ func (c *Config) Validate(reg *registry.Registry) error {
 				add("listen.nut_tls."+key, "listen.nut_tls.%s: %v", key, err)
 			}
 		}
+	}
+	if s := c.Listen.SNMP; s != nil {
+		c.validateSNMP(s, checkAddr, add)
 	}
 	roles := []string{RoleSecondary, RolePrimary, RoleAdmin}
 	for _, name := range slices.Sorted(maps.Keys(c.Users)) {
@@ -640,6 +742,25 @@ func (c *Config) YAML() ([]byte, error) {
 	}
 	if out.Listen.NUT == "" {
 		out.Listen.NUT = "off"
+	}
+	if s := c.Listen.SNMP; s != nil {
+		cp := *s
+		if cp.Community != "" {
+			cp.Community = "<hidden>"
+		}
+		if len(s.Users) > 0 {
+			cp.Users = map[string]SNMPUser{}
+			for k, u := range s.Users {
+				if u.AuthPassword != "" {
+					u.AuthPassword = "<hidden>"
+				}
+				if u.PrivacyPassword != "" {
+					u.PrivacyPassword = "<hidden>"
+				}
+				cp.Users[k] = u
+			}
+		}
+		out.Listen.SNMP = &cp
 	}
 	if len(out.Users) > 0 {
 		out.Users = map[string]User{}

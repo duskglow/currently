@@ -41,6 +41,17 @@ listen:
   #   cert_file: /etc/nutng/cert.pem
   #   key_file: /etc/nutng/key.pem
   # control: /run/nutng/nutng.sock   # socket the nutng CLI uses
+  # snmp:                      # SNMP agent (UPS-MIB) for LibreNMS, Zabbix, PRTG...
+  #   addr: ":1161"            # UDP; 161 needs root
+  #   community: public        # v1/v2c; other UPSes: public@<ups>
+  #   users:                   # SNMPv3; other UPSes by context name
+  #     monitor:
+  #       auth: sha256         # none, md5, sha, sha224, sha256, sha384, sha512
+  #       auth_password_env: NUTNG_SNMP_AUTH
+  #       privacy: aes         # none or aes
+  #       privacy_password_env: NUTNG_SNMP_PRIV
+  #   traps:
+  #     - target: librenms.example.com   # SNMPv2c traps on power events
 
 # Accounts for the NUT protocol, like NUT's upsd.users. Reading needs no
 # login; upsmon and commands do.

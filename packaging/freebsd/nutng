@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# PROVIDE: nutng
+# REQUIRE: NETWORKING devfs
+# BEFORE: LOGIN
+# KEYWORD: shutdown
+#
+# rc.d script for nutng, the nut-ng UPS monitor. Enable it with
+#
+#   sysrc nutng_enable=YES
+#   service nutng start
+#
+# nutng_config: config file (default /usr/local/etc/nutng/nutng.yaml)
+# nutng_env_file: NAME=value secrets for *_env settings
+#                 (default /usr/local/etc/nutng/nutng.env)
+
+. /etc/rc.subr
+
+name="nutng"
+rcvar="nutng_enable"
+
+load_rc_config $name
+
+: ${nutng_enable:="NO"}
+: ${nutng_config:="/usr/local/etc/nutng/nutng.yaml"}
+: ${nutng_env_file:="/usr/local/etc/nutng/nutng.env"}
+
+pidfile="/var/run/${name}.pid"
+procname="/usr/sbin/daemon"
+command="/usr/sbin/daemon"
+# daemon(8) restarts nutng 5 seconds after it exits and sends its output
+# to syslog.
+command_args="-P ${pidfile} -r -R 5 -S -T ${name} -t ${name} /usr/local/bin/nutng serve"
+if [ -f "${nutng_config}" ]; then
+	command_args="${command_args} --config ${nutng_config}"
+fi
+
+run_rc_command "$1"

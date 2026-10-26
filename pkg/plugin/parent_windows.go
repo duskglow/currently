@@ -8,6 +8,6 @@ func waitParent(pid int) {
 	if err != nil {
 		return // already gone, or not ours to watch
 	}
-	defer windows.CloseHandle(h)
+	defer func() { _ = windows.CloseHandle(h) }()
 	_, _ = windows.WaitForSingleObject(h, windows.INFINITE)
 }

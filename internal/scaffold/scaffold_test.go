@@ -57,7 +57,7 @@ func buildGo(t *testing.T, kind, name string) string {
 	if _, err := Create(src, Params{Kind: kind, Name: name, Lang: "go", SDKPath: repoRoot(t)}); err != nil {
 		t.Fatal(err)
 	}
-	gobin := filepath.Join(runtime.GOROOT(), "bin", "go")
+	gobin := filepath.Join(runtime.GOROOT(), "bin", "go") //nolint:staticcheck // the go running the tests, even when it is not on PATH
 	bin := t.TempDir()
 	exe := "nutng-" + kind + "-" + name
 	if runtime.GOOS == "windows" {

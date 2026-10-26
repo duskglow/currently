@@ -1,4 +1,4 @@
-//go:build !linux && !windows
+//go:build !linux && !windows && !darwin && !freebsd
 
 package usbhid
 
@@ -7,8 +7,8 @@ import (
 	"runtime"
 )
 
-// macOS (IOKit) and FreeBSD (hidraw/uhid) transports come in a later
-// milestone. Captures can still be replayed with the replay driver.
+// No USB transport on this platform (OpenBSD, NetBSD, ...). Captures can
+// still be replayed with the replay driver.
 
 func enumerate() ([]DeviceInfo, error) { return nil, nil }
 

@@ -4,16 +4,18 @@ UPS monitoring that is easy to set up. One self-contained binary, one short
 config file, clear error messages, and an API that monitoring tools can
 query.
 
-> **Status:** early development (milestone 5 of 7). USB UPSes work on
-> Windows and Linux. nutng shuts computers down safely (as primary or
-> secondary, and alongside NUT's upsmon and upsd), serves the NUT
-> protocol, Prometheus metrics, MQTT and a REST API, installs itself as a
-> service, and takes driver and output plugins. SNMP and macOS/FreeBSD
-> USB support are next. See [docs/PLAN.md](docs/PLAN.md).
+> **Status:** early development (milestone 6 of 7). USB UPSes work on
+> Linux, Windows, macOS and FreeBSD. nutng shuts computers down safely (as
+> primary or secondary, and alongside NUT's upsmon and upsd), serves the
+> NUT protocol, SNMP (UPS-MIB), Prometheus metrics, MQTT and a REST API,
+> installs itself as a service, and takes driver and output plugins. See
+> the [documentation](docs/index.md) and [docs/PLAN.md](docs/PLAN.md).
 
 ## Get started
 
-Build it (Go 1.26 or newer):
+Install a package from the releases page (deb, rpm, apk, Arch, MSI,
+winget, Homebrew, FreeBSD pkg, or a container image; see
+[Install](docs/install.md)), or build it (Go 1.26 or newer):
 
 ```sh
 go build -o bin/nutng ./cmd/nutng
@@ -175,11 +177,14 @@ operating system's own HID driver:
   Windows keeps showing the UPS as a battery while nutng reads it.
 - **Linux:** uses hidraw. To run nutng as a regular user, install
   [packaging/linux/90-nutng-ups.rules](packaging/linux/90-nutng-ups.rules).
-- **macOS and FreeBSD:** not yet (milestone 6).
+- **macOS:** uses IOKit without seizing the UPS, so macOS's own UPS
+  support keeps working. No cgo or extra libraries.
+- **FreeBSD:** uses uhid(4) or hidraw(4).
 
-Tested on hardware: CyberPower CP1500PFCLCD on Windows. APC and Eaton
-mappings follow the standard layout but haven't been checked on real units
-yet.
+Tested on hardware: CyberPower CP1500PFCLCD on Windows. The macOS and
+FreeBSD transports are tested in CI but not yet with a real UPS; APC and
+Eaton mappings follow the standard layout but haven't been checked on real
+units yet. See [Platforms](docs/platforms.md).
 
 When a UPS shows wrong or missing values, record it:
 
@@ -204,8 +209,9 @@ your model without rebuilding, put a file in `quirks.d/` next to your
 
 ## Monitoring tools
 
-nutng speaks three protocols. All listen on this machine only until you
-change the addresses under `listen:` (for example `nut: ":3493"`).
+nutng speaks four protocols. All listen on this machine only until you
+change the addresses under `listen:` (for example `nut: ":3493"`). See
+[Monitoring tools](docs/outputs/index.md).
 
 **NUT protocol** (port 3493): anything that works with NUT's upsd works
 with nutng: `upsc`, `upsmon`, Home Assistant's NUT integration, Synology
@@ -228,6 +234,26 @@ users:
   admin:
     password: change-me
     role: admin                 # primary, plus upscmd and upsrw
+```
+
+**SNMP** (UPS-MIB, RFC 1628): LibreNMS, Zabbix, PRTG, Observium and other
+network monitors poll nutng like a UPS network card. v1, v2c and v3 (SHA-2
+authentication, AES privacy), with v2c traps on power events. Tested
+against net-snmp's tools and snmptrapd
+([test/integration/snmp.sh](test/integration/snmp.sh)).
+
+```yaml
+listen:
+  snmp:
+    addr: ":1161"
+    community: my-community      # extra UPSes: my-community@<ups>, or the v3 context
+    users:
+      monitor: {auth: sha256, auth_password_env: NUTNG_SNMP_AUTH, privacy: aes, privacy_password_env: NUTNG_SNMP_PRIV}
+    traps: [{target: librenms.example.com}]
+```
+
+```sh
+snmpwalk -v2c -c my-community localhost:1161 1.3.6.1.2.1.33
 ```
 
 **Prometheus**: metrics are at `http://127.0.0.1:9300/metrics`, for
@@ -286,7 +312,14 @@ nutng.yaml:4: UPS rack (usbhid driver): unknown option "serail" (did you mean "s
 | `outputs/rest` | REST/JSON API and event stream |
 | `outputs/nutproto` | NUT protocol server (upsd compatible) |
 | `outputs/prometheus` | Prometheus metrics |
+| `outputs/snmp` | SNMP agent (UPS-MIB; v1, v2c, v3) |
+| `packaging` | Service files, udev rule, MSI, FreeBSD package, container |
+| `docs` | Documentation site (`mkdocs serve`) |
 | `internal/svcmgr` | Service install and control |
+
+## License
+
+nut-ng is licensed under the [Apache License, Version 2.0](LICENSE).
 
 ## Development
 
@@ -296,6 +329,8 @@ go vet ./...
 NUTNG_HW=1 go test ./drivers/usbhid -run TestHardware -v   # with a UPS attached
 go build -o nutng ./cmd/nutng && test/integration/nut-clients.sh ./nutng   # Linux
 test/integration/shutdown.sh ./nutng   # Linux; shuts nothing down (marker files only)
+test/integration/snmp.sh ./nutng       # Linux; needs the snmp and snmptrapd packages
+goreleaser release --snapshot --clean --skip=docker,sign,sbom   # every archive and package
 NUTNG_TEST_PYTHON=python3 go test ./internal/scaffold   # Python plugin SDK (needs grpcio)
 scripts/gen.sh                         # after changing proto/
 ```

@@ -152,7 +152,7 @@ func TestEventStream(t *testing.T) {
 	}
 	seen := map[string]bool{}
 	sc := bufio.NewScanner(resp.Body)
-	for sc.Scan() && !(seen["command"] && seen["on_battery"]) {
+	for sc.Scan() && (!seen["command"] || !seen["on_battery"]) {
 		if typ, ok := strings.CutPrefix(sc.Text(), "event: "); ok {
 			if typ == "update" {
 				t.Error("update event despite notable=1")

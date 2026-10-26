@@ -1,0 +1,203 @@
+# GoReleaser config for nutng releases: archives for every platform,
+# Linux packages (deb, rpm, apk, Arch), a multi-arch container image,
+# Homebrew and winget manifests, checksums, SBOMs and cosign signatures.
+# The Windows MSI and FreeBSD package are built by the release workflow
+# from these archives and attached to the release afterwards
+# (packaging/windows, packaging/freebsd).
+#
+#   goreleaser release --snapshot --clean --skip=docker,sign,sbom   # local test build
+#
+# Releases run from .github/workflows/release.yml when a v* tag is pushed.
+version: 2
+project_name: nutng
+
+builds:
+  - &build
+    id: nutng
+    main: ./cmd/nutng
+    binary: nutng
+    env: [CGO_ENABLED=0]
+    goos: [linux, windows, darwin, freebsd]
+    goarch: [amd64, arm64, arm]
+    goarm: ["7"]
+    ignore:
+      - { goos: windows, goarch: arm }
+      - { goos: darwin, goarch: arm }
+      - { goos: freebsd, goarch: arm }
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X github.com/nut-ng/nut-ng/internal/version.Version={{ .Version }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+  - <<: *build
+    id: mqtt
+    main: ./plugins/mqtt
+    # Plugins live in plugins/ next to the nutng executable.
+    binary: plugins/nutng-output-mqtt
+    ldflags:
+      - -s -w
+
+archives:
+  - id: default
+    ids: [nutng, mqtt]
+    formats: [tar.gz]
+    format_overrides:
+      - { goos: windows, formats: [zip] }
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}"
+    files:
+      - LICENSE
+      - README.md
+      - nutng.example.yaml
+      - src: packaging/linux/*
+        dst: packaging/linux
+      - src: packaging/freebsd/*
+        dst: packaging/freebsd
+      - src: packaging/macos/*
+        dst: packaging/macos
+
+nfpms:
+  - id: packages
+    ids: [nutng, mqtt]
+    package_name: nutng
+    vendor: nut-ng
+    homepage: https://github.com/nut-ng/nut-ng
+    maintainer: Russell Miller <rmiller@duskglow.com>
+    description: |-
+      Easy UPS monitor and shutdown daemon.
+      nut-ng monitors UPSes over USB and other drivers, shuts computers down
+      safely on power failure, and serves UPS state over the NUT protocol,
+      SNMP (UPS-MIB), Prometheus and a REST API.
+    license: Apache-2.0
+    section: admin
+    formats: [deb, rpm, apk, archlinux]
+    # The binaries go to /usr/lib/nutng (nutng finds plugins in plugins/
+    # next to itself), with /usr/bin/nutng linking to it.
+    bindir: /usr/lib/nutng
+    contents:
+      - src: /usr/lib/nutng/nutng
+        dst: /usr/bin/nutng
+        type: symlink
+      - src: packaging/linux/nutng.service
+        dst: /usr/lib/systemd/system/nutng.service
+        file_info: { mode: 0644 }
+      - src: packaging/linux/nutng.openrc
+        dst: /etc/init.d/nutng
+        packager: apk
+        file_info: { mode: 0755 }
+      - src: packaging/linux/90-nutng-ups.rules
+        dst: /usr/lib/udev/rules.d/90-nutng-ups.rules
+        file_info: { mode: 0644 }
+      - src: packaging/linux/nutng.default
+        dst: /etc/default/nutng
+        type: config|noreplace
+        file_info: { mode: 0600 }
+      - dst: /etc/nutng
+        type: dir
+        file_info: { mode: 0755 }
+      - dst: /etc/nutng/plugins.d
+        type: dir
+        file_info: { mode: 0755 }
+      - src: nutng.example.yaml
+        dst: /usr/share/doc/nutng/nutng.example.yaml
+        file_info: { mode: 0644 }
+      - src: README.md
+        dst: /usr/share/doc/nutng/README.md
+        file_info: { mode: 0644 }
+      - src: LICENSE
+        dst: /usr/share/doc/nutng/LICENSE
+        file_info: { mode: 0644 }
+    scripts:
+      postinstall: packaging/linux/postinstall.sh
+      preremove: packaging/linux/preremove.sh
+      postremove: packaging/linux/postremove.sh
+    rpm:
+      group: Applications/System
+    deb:
+      fields:
+        Bugs: https://github.com/nut-ng/nut-ng/issues
+    overrides:
+      deb:
+        recommends: [udev]
+
+checksum:
+  name_template: checksums.txt
+
+sboms:
+  - artifacts: archive
+
+signs:
+  # Keyless signing with the workflow's OIDC identity; verify with
+  #   cosign verify-blob --bundle checksums.txt.sigstore.json \
+  #     --certificate-identity-regexp 'github.com/nut-ng/nut-ng' \
+  #     --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt
+  - cmd: cosign
+    artifacts: checksum
+    signature: "${artifact}.sigstore.json"
+    args: [sign-blob, "--bundle=${signature}", "${artifact}", --yes]
+
+dockers_v2:
+  - id: image
+    ids: [nutng, mqtt]
+    dockerfile: packaging/docker/Dockerfile
+    images: [ghcr.io/nut-ng/nutng]
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    platforms: [linux/amd64, linux/arm64, linux/arm/v7]
+    labels:
+      org.opencontainers.image.source: https://github.com/nut-ng/nut-ng
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.description: nut-ng UPS monitor
+
+homebrew_casks:
+  - name: nutng
+    ids: [default]
+    binaries: [nutng]
+    homepage: https://github.com/nut-ng/nut-ng
+    description: Easy UPS monitor that serves NUT, SNMP, Prometheus and REST
+    repository:
+      owner: nut-ng
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    skip_upload: auto
+    caveats: |
+      Set nutng up and run it as a service:
+        sudo nutng init
+        sudo nutng service install && sudo nutng service start
+      The binary is not notarized yet; if macOS refuses to run it:
+        xattr -dr com.apple.quarantine "$(brew --prefix)/bin/nutng"
+
+winget:
+  - name: nut-ng
+    package_identifier: nut-ng.nutng
+    publisher: nut-ng
+    short_description: Easy UPS monitor that serves NUT, SNMP, Prometheus and REST
+    license: Apache-2.0
+    license_url: https://github.com/nut-ng/nut-ng/blob/main/LICENSE
+    homepage: https://github.com/nut-ng/nut-ng
+    ids: [default]
+    skip_upload: auto
+    repository:
+      owner: nut-ng
+      name: winget-pkgs
+      branch: "nutng-{{ .Version }}"
+      token: "{{ .Env.WINGET_TOKEN }}"
+      pull_request:
+        enabled: true
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude: ["^docs:", "^test:", "^ci:"]
+
+release:
+  github:
+    owner: nut-ng
+    name: nut-ng
+  prerelease: auto

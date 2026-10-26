@@ -154,6 +154,12 @@ func NoDeviceHelp() string {
 		return "Check that the UPS's USB cable is plugged into this computer; it should appear in Device Manager under Batteries as \"HID UPS Battery\"."
 	case "linux":
 		return "Check that the UPS's USB cable is plugged in and that it appears in `lsusb` and under /sys/class/hidraw."
+	case "darwin":
+		return "Check that the UPS's USB cable is plugged in and that it appears in System Information → USB (and as a UPS in System Settings → Battery or Energy Saver)."
+	case "freebsd":
+		return "Check that the UPS's USB cable is plugged in and appears in `usbconfig list` and as /dev/uhid* or /dev/hidraw*. " +
+			"If it only appears as ugen, load a HID driver: `kldload uhid` (or set hw.usb.usbhid.enable=1 and hidraw_load=\"YES\" in /boot/loader.conf for hidraw). " +
+			"Stop NUT's usbhid-ups if it runs, as uhid devices can be opened by one program at a time."
 	default:
 		return "USB UPS access on " + runtime.GOOS + " is not supported yet."
 	}

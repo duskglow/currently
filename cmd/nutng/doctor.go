@@ -27,6 +27,7 @@ import (
 	"github.com/nut-ng/nut-ng/internal/svcmgr"
 	"github.com/nut-ng/nut-ng/internal/term"
 	"github.com/nut-ng/nut-ng/internal/version"
+	"github.com/nut-ng/nut-ng/outputs/snmp"
 	"github.com/nut-ng/nut-ng/pkg/sdk"
 )
 
@@ -92,6 +93,7 @@ func (d *doctor) run() {
 	svc := d.checkService()
 	list, reachable := d.checkDaemon(cfg, svc)
 	d.checkPorts(cfg, reachable)
+	d.checkSNMP(cfg, reachable)
 	d.checkUSB(cfg)
 	if reachable {
 		d.checkUPSes(list)
@@ -161,9 +163,10 @@ func (d *doctor) checkDaemon(cfg *config.Config, svc svcmgr.State) ([]sdk.UPS, b
 		}
 	}
 	fix := "run `nutng serve`, or install the service with `nutng service install`"
-	if svc == svcmgr.StateStopped {
+	switch svc {
+	case svcmgr.StateStopped:
 		fix = "start the service with `nutng service start`"
-	} else if svc == svcmgr.StateRunning {
+	case svcmgr.StateRunning:
 		fix = "the service is running but not answering; check its logs (" + svcmgr.LogHint() + ")"
 	}
 	detail := "not reachable: " + err.Error()
@@ -209,6 +212,35 @@ func (d *doctor) checkPorts(cfg *config.Config, running bool) {
 		} else {
 			d.add(checkOK, "Ports", fmt.Sprintf("%s answers on %s", p.what, p.addr))
 		}
+	}
+}
+
+// checkSNMP is checkPorts for the SNMP agent's UDP port.
+func (d *doctor) checkSNMP(cfg *config.Config, running bool) {
+	s := cfg.Listen.SNMP
+	if s == nil {
+		return
+	}
+	if !running {
+		pc, err := net.ListenPacket("udp", s.Addr)
+		if err != nil {
+			fix := "stop the program using it (often snmpd), or set listen.snmp.addr in nutng.yaml to another address"
+			if errors.Is(err, os.ErrPermission) {
+				fix = "ports below 1024 need root; use a port such as 1161, or run nutng as root (the default service)"
+			}
+			d.add(checkFail, "Ports", fmt.Sprintf("SNMP port %s (UDP) cannot be used: %v", s.Addr, err), fix)
+			return
+		}
+		pc.Close()
+		d.add(checkOK, "Ports", fmt.Sprintf("SNMP port %s (UDP) is free", s.Addr))
+		return
+	}
+	addr := strings.TrimPrefix(client.LocalURL(s.Addr), "http://")
+	if _, err := snmp.Probe(addr, 2*time.Second); err != nil {
+		d.add(checkFail, "Ports", fmt.Sprintf("SNMP agent on %s does not answer: %v", s.Addr, err),
+			"check nutng's log for errors about listen.snmp, and that no firewall blocks UDP "+s.Addr)
+	} else {
+		d.add(checkOK, "Ports", "SNMP agent answers on "+s.Addr+" (UDP)")
 	}
 }
 

@@ -81,7 +81,12 @@ func start(t *testing.T, yaml string, exec *recorder) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("daemon did not start")
 	}
-	t.Cleanup(func() { cancel(); <-done })
+	t.Cleanup(func() {
+		cancel()
+		if err := <-done; err != nil {
+			t.Logf("daemon: %v", err)
+		}
+	})
 }
 
 // TestPrimaryAndSecondaryShutdown runs a primary nutng with a simulated

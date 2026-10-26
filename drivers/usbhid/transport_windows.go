@@ -203,7 +203,7 @@ func enumerate() ([]DeviceInfo, error) {
 			continue
 		}
 		info, err := describe(h, path)
-		windows.CloseHandle(h)
+		_ = windows.CloseHandle(h)
 		if err == nil {
 			out = append(out, info)
 		}
@@ -230,7 +230,7 @@ func describe(h windows.Handle, path string) (DeviceInfo, error) {
 		if statusCall(procHidPGetCaps, pp, uintptr(unsafe.Pointer(&caps))) == nil {
 			info.Usage = hid.NewUsage(caps.UsagePage, caps.Usage)
 		}
-		procHidDFreePreparsedData.Call(pp)
+		_, _, _ = procHidDFreePreparsedData.Call(pp)
 	}
 	return info, nil
 }
@@ -553,7 +553,7 @@ func (d *winDevice) Close() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.pp != 0 {
-		procHidDFreePreparsedData.Call(d.pp)
+		_, _, _ = procHidDFreePreparsedData.Call(d.pp)
 		d.pp = 0
 	}
 	if d.h != 0 {
