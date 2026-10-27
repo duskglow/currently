@@ -131,7 +131,7 @@ func (a *app) detectCmd() *cobra.Command {
 				for _, u := range upses {
 					if u.Problem != "" {
 						fmt.Fprintf(out, "\n%s %s cannot be opened: %s\n  → %s\n", p.paint(term.Yellow, "Warning:"), u.Name(),
-							u.Problem, usbhid.NodeHelp())
+							u.Problem, usbhid.NodeHelp(u))
 					}
 				}
 			}

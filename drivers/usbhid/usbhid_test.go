@@ -2,6 +2,7 @@ package usbhid
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -24,6 +25,11 @@ type fakeBackend struct {
 	mu      sync.Mutex
 	reports map[hid.ReportType]map[uint8][]byte
 	failAll bool
+	// strict fails reads into buffers shorter than the report, as USB does
+	// when a device sends more than was asked for.
+	strict bool
+	// written records the length of each feature report written.
+	written []int
 }
 
 func (b *fakeBackend) GetReport(t hid.ReportType, buf []byte) (int, error) {
@@ -36,6 +42,9 @@ func (b *fakeBackend) GetReport(t hid.ReportType, buf []byte) (int, error) {
 	if !ok {
 		return 0, errors.New("no such report")
 	}
+	if b.strict && len(buf) < len(r) {
+		return 0, errors.New("value too large for defined data type")
+	}
 	return copy(buf, r), nil
 }
 
@@ -43,6 +52,7 @@ func (b *fakeBackend) SetFeature(buf []byte) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.reports[hid.Feature][buf[0]] = append([]byte(nil), buf...)
+	b.written = append(b.written, len(buf))
 	return nil
 }
 
@@ -397,6 +407,117 @@ func TestRealCapture(t *testing.T) {
 	for _, k := range []string{"battery.runtime", "battery.voltage", "input.voltage", "output.voltage", "ups.load", "ups.realpower"} {
 		if vars[k] == "" {
 			t.Errorf("%s missing", k)
+		}
+	}
+}
+
+// TestReportLongerThanDeclared reads reports that firmware sends longer
+// than its descriptor declares: reading into buffers of the declared
+// length would overflow, as it did with a CyberPower on Linux.
+func TestReportLongerThanDeclared(t *testing.T) {
+	dev, be := newCyberPower(t, nil)
+	be.strict = true
+	for id, r := range be.reports[hid.Feature] {
+		be.reports[hid.Feature][id] = append(r, 0, 0) // two undeclared bytes
+	}
+	values, err := dev.Read(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if errs := dev.ReportErrors(); len(errs) > 0 {
+		t.Errorf("report errors: %v", errs)
+	}
+	if values["UPS.PowerSummary.RemainingCapacity"] != 100 {
+		t.Errorf("RemainingCapacity = %d", values["UPS.PowerSummary.RemainingCapacity"])
+	}
+	// Writes still send the declared length.
+	if err := dev.Write("UPS.PowerSummary.AudibleAlarmControl", 1); err != nil {
+		t.Fatal(err)
+	}
+	f := dev.byPath["UPS.PowerSummary.AudibleAlarmControl"]
+	if want := dev.desc.ReportLength(hid.Feature, f.ReportID); len(be.written) != 1 || be.written[0] != want {
+		t.Errorf("wrote %v bytes, want %d", be.written, want)
+	}
+
+	// A report that cannot be read is named.
+	delete(be.reports[hid.Feature], f.ReportID)
+	if _, err := dev.Read(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if errs := dev.ReportErrors(); len(errs) != 1 {
+		t.Errorf("report errors: %v", errs)
+	}
+}
+
+func TestRawReports(t *testing.T) {
+	dev, _ := newCyberPower(t, nil)
+	if _, err := dev.Read(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	raw := dev.RawReports()
+	if len(raw) == 0 || !strings.Contains(raw["feature report 8"], "bytes)") {
+		t.Errorf("raw reports: %v", raw)
+	}
+}
+
+// TestCyberPowerLinux decodes a real CP1500PFCLCD read on Linux: its
+// descriptor declares the measurements as Constant (read-only) items,
+// which the parser once dropped as padding, leaving the status unknown.
+func TestCyberPowerLinux(t *testing.T) {
+	var rec struct {
+		Descriptor string            `json:"report_descriptor"`
+		Reports    map[string]string `json:"reports"`
+	}
+	data, err := os.ReadFile("testdata/cyberpower-cp1500pfclcd-linux-reports.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &rec); err != nil {
+		t.Fatal(err)
+	}
+	desc, err := hex.DecodeString(rec.Descriptor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	be := &fakeBackend{reports: map[hid.ReportType]map[uint8][]byte{hid.Feature: {}, hid.Input: {}}}
+	for key, h := range rec.Reports {
+		kind, _, _ := strings.Cut(key, " ")
+		b, err := hex.DecodeString(h)
+		if err != nil {
+			t.Fatal(err)
+		}
+		typ := hid.Feature
+		if kind == "input" {
+			typ = hid.Input
+		}
+		be.reports[typ][b[0]] = b
+	}
+	dev, err := newRawDevice(cyberPowerInfo, desc, be)
+	if err != nil {
+		t.Fatal(err)
+	}
+	values, err := dev.Read(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	vars := mapperFor(t, dev).Vars(values, func(int) (string, error) { return "", errors.New("none") })
+	for k, want := range map[string]string{
+		"ups.status":              "OL",
+		"battery.charge":          "100",
+		"battery.runtime":         "1075",
+		"battery.runtime.low":     "300",
+		"battery.charge.low":      "10",
+		"battery.charge.warning":  "20",
+		"battery.voltage":         "27.5",
+		"battery.voltage.nominal": "24.0",
+		"input.voltage":           "120.0",
+		"output.voltage":          "120.0",
+		"ups.load":                "40",
+		"input.transfer.low":      "100",
+		"input.transfer.high":     "139",
+	} {
+		if vars[k] != want {
+			t.Errorf("%s = %q, want %q", k, vars[k], want)
 		}
 	}
 }

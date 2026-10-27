@@ -70,6 +70,7 @@ func describeHidraw(name string) (DeviceInfo, error) {
 	// separate manufacturer and product strings.
 	if real, err := filepath.EvalSymlinks(sys); err == nil {
 		usb := filepath.Dir(filepath.Dir(real))
+		info.Port = filepath.Base(usb)
 		if m := readTrim(filepath.Join(usb, "manufacturer")); m != "" {
 			info.Manufacturer = m
 		}
@@ -111,12 +112,23 @@ func deviceNode(name string) (path, problem string) {
 }
 
 // NodeHelp says how to fix a missing device node.
-func NodeHelp() string {
-	if Container() != "" {
-		return "on the host, pass the UPS's hidraw device into the container (under any name), " +
-			"or run Currently on the host: https://duskglow.github.io/currently/platforms/#containers"
+func NodeHelp(info DeviceInfo) string {
+	if Container() == "" {
+		return "check that udev (or devtmpfs) is running"
 	}
-	return "check that udev (or devtmpfs) is running"
+	if info.Serial == "" && info.Port == "" {
+		return fmt.Sprintf("on the host, pass %s into the container under any name; Currently finds it by device number. "+
+			"See https://duskglow.github.io/currently/platforms/#containers", info.Path)
+	}
+	match, name := `KERNELS=="`+info.Port+`"`, "ups-"+info.Port
+	if info.Serial != "" {
+		match, name = `ATTRS{serial}=="`+info.Serial+`"`, "ups-"+strings.ToLower(info.Serial)
+	}
+	return fmt.Sprintf("on the host, pass it into the container under any name; Currently finds it by device number. "+
+		"%s works, but hidraw numbers can change, so a stable name is safer: add "+
+		"`SUBSYSTEM==\"hidraw\", %s, SYMLINK+=\"%s\"` to /etc/udev/rules.d/91-ups-names.rules on the host "+
+		"and pass /dev/%s instead. See https://duskglow.github.io/currently/platforms/#containers",
+		info.Path, match, name, name)
 }
 
 // sameDevice reports whether path is a character device numbered devnum
@@ -166,7 +178,7 @@ func readTrim(path string) string {
 
 func openDevice(info DeviceInfo) (Device, error) {
 	if info.Problem != "" {
-		return nil, errors.New(info.Problem + "; " + NodeHelp())
+		return nil, errors.New(info.Problem + "; " + NodeHelp(info))
 	}
 	name := sysName(info.Path)
 	desc, err := os.ReadFile(filepath.Join(sysHidraw, name, "device", "report_descriptor"))

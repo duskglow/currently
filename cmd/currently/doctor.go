@@ -302,7 +302,7 @@ func (d *doctor) checkUSB(cfg *config.Config) {
 	}
 	for _, u := range upses {
 		if u.Problem != "" {
-			d.add(checkFail, "USB", "found "+u.Description()+", but "+u.Problem, usbhid.NodeHelp())
+			d.add(checkFail, "USB", "found "+u.Description()+", but "+u.Problem, usbhid.NodeHelp(u))
 			continue
 		}
 		d.add(checkOK, "USB", "found "+u.Description())

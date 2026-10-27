@@ -275,9 +275,12 @@ func Parse(data []byte) (*Descriptor, error) {
 				if g.reportSize < 0 || g.reportCount < 0 || total > 1<<16 {
 					return nil, fmt.Errorf("unreasonable report size %d × %d", g.reportSize, g.reportCount)
 				}
+				// Constant items without usages are padding. Constant items
+				// with usages are read-only values: CyberPower declares its
+				// measurements (charge, status, voltages) that way.
 				constant, variable := u&1 != 0, u&2 != 0
-				if !constant && variable {
-					usages := expand(l)
+				usages := expand(l)
+				if variable && (!constant || len(usages) > 0) {
 					for n := 0; n < g.reportCount && len(usages) > 0; n++ {
 						if len(d.Fields) >= maxFields {
 							return nil, errors.New("too many fields")

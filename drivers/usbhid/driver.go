@@ -10,9 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -219,6 +221,7 @@ type device struct {
 	log      *slog.Logger
 	poke     chan struct{}
 	once     sync.Once
+	failing  string // reports that failed to read, as last logged
 }
 
 func newDevice(dev Device, interval time.Duration, quirksDir string, log *slog.Logger) (*device, error) {
@@ -244,12 +247,35 @@ func (d *device) Watch(ctx context.Context, sink func(sdk.Update)) error {
 			}
 			return err
 		}
+		d.logReportErrors()
 		sink(sdk.Update{Vars: d.m.Vars(values, d.dev.String)})
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-t.C:
 		case <-d.poke:
+		}
+	}
+}
+
+// logReportErrors warns when the set of reports that cannot be read
+// changes: their values are missing.
+func (d *device) logReportErrors() {
+	re, ok := d.dev.(interface{ ReportErrors() map[string]string })
+	if !ok {
+		return
+	}
+	errs := re.ReportErrors()
+	var list []string
+	for _, k := range slices.Sorted(maps.Keys(errs)) {
+		list = append(list, k+": "+errs[k])
+	}
+	if s := strings.Join(list, "; "); s != d.failing {
+		d.failing = s
+		if s != "" {
+			d.log.Warn("some UPS reports could not be read; their values are missing", "reports", s)
+		} else {
+			d.log.Info("all UPS reports can be read again")
 		}
 	}
 }

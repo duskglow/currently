@@ -24,6 +24,8 @@ type DeviceInfo struct {
 	// Problem explains why the device cannot be opened, such as a device
 	// node missing in a container; empty when it can be.
 	Problem string `json:"problem,omitempty"`
+	// Port is the USB port path (Linux), such as "3-1.2".
+	Port string `json:"port,omitempty"`
 }
 
 // IsPowerDevice reports whether the device's top-level collection belongs

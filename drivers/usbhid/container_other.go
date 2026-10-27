@@ -8,4 +8,4 @@ func Container() string { return "" }
 
 // NodeHelp says how to fix a missing device node; device nodes only go
 // missing on Linux.
-func NodeHelp() string { return "" }
+func NodeHelp(DeviceInfo) string { return "" }

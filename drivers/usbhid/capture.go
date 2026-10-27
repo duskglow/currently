@@ -38,6 +38,12 @@ type Capture struct {
 	Samples          []Sample       `json:"samples"`
 	// Unmapped lists fields no quirk rule uses (informational).
 	Unmapped []string `json:"unmapped,omitempty"`
+	// ReportErrors lists the reports that could not be read in the first
+	// sample, with their errors.
+	ReportErrors map[string]string `json:"report_errors,omitempty"`
+	// RawReports holds the bytes of each report in the first sample, in
+	// hex, when the platform reads whole reports (not on Windows).
+	RawReports map[string]string `json:"raw_reports,omitempty"`
 }
 
 // Sample is one read of every report.
@@ -104,6 +110,16 @@ func (d *Driver) CaptureDevice(ctx context.Context, o CaptureOptions) (*Capture,
 			return c, err
 		}
 		c.Samples = append(c.Samples, Sample{OffsetMS: time.Since(start).Milliseconds(), Values: values})
+		if re, ok := dev.(interface{ ReportErrors() map[string]string }); ok && n == 0 {
+			if errs := re.ReportErrors(); len(errs) > 0 {
+				c.ReportErrors = errs
+			}
+		}
+		// Reports hold the serial number's string index, not the string, so
+		// they can be shared.
+		if rr, ok := dev.(interface{ RawReports() map[string]string }); ok && n == 0 {
+			c.RawReports = rr.RawReports()
+		}
 		if n == 0 {
 			// String indexes are the values of fields named i<Something>.
 			for _, f := range c.Fields {
