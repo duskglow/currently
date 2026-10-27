@@ -273,12 +273,13 @@ Currently speaks four protocols. All listen on this machine only until you
 change the addresses under `listen:` (for example `nut: ":3493"`). See
 [Monitoring tools](docs/outputs/index.md).
 
-**NUT protocol** (port 3493): anything that works with NUT's upsd works
-with Currently: `upsc`, `upsmon`, Home Assistant's NUT integration, Synology
-and QNAP NAS "network UPS" settings, and Nagios/Icinga `check_ups`. It is
-tested against the real NUT 2.8 clients, including `upsmon` primary and
-secondary through a power failure
-([test/integration/nut-clients.sh](test/integration/nut-clients.sh)).
+**NUT protocol** (port 3493): anything that works with NUT's upsd should
+work with Currently. It is tested against the real NUT 2.8 clients
+(`upsc`, `upscmd`, `upsrw`, and `upsmon` primary and secondary through a
+power failure: [test/integration/nut-clients.sh](test/integration/nut-clients.sh))
+and with Home Assistant's NUT integration. Synology and QNAP NAS "network
+UPS" settings and Nagios/Icinga `check_ups` use the same protocol but are
+not tested yet; reports welcome.
 
 ```sh
 upsc cyberpower@localhost

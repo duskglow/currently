@@ -1,11 +1,12 @@
 # NUT protocol
 
 Currently serves the network protocol of NUT's upsd (version 1.3), so
-anything that works with NUT works with Currently: `upsc`, `upscmd`, `upsrw`,
-`upsmon`, Home Assistant's NUT integration, Synology and QNAP "network UPS
-server" settings, and Nagios/Icinga `check_ups`. It is tested against the
-real NUT 2.8 clients, including upsmon as primary and secondary through a
-power failure.
+anything that works with NUT should work with Currently. It is tested
+against the real NUT 2.8 clients (`upsc`, `upscmd`, `upsrw`, and upsmon as
+primary and secondary through a power failure) and with Home Assistant's NUT
+integration. Synology and QNAP "network UPS server" settings and
+Nagios/Icinga `check_ups` use the same protocol but are not tested yet;
+reports welcome.
 
 ```yaml
 listen:
