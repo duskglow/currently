@@ -11,18 +11,21 @@ work with someone else's UPS; the second half of this file is about that.
 
 ## Safety first
 
-Currently shuts computers down and can tell UPSes to cut power. When
-building or testing:
+Currently shuts computers down and can tell UPSes to cut power. Two
+different rules apply:
 
-- **Never shut anything down.** Tests use the fake executor. For manual or
-  integration runs, set `CURRENTLY_NEVER_SHUTDOWN=1`, point
-  `shutdown.command` and hooks at harmless commands (writing a marker
-  file), use `shutdown.dry_run: true`, and use the `simulator` or `replay`
-  driver for outages.
-- **Never send power commands** (`load.off`, `load.off.delay`,
-  `shutdown.return`, `shutdown.stayoff`, `test.battery.*`, APC `Z`/`K`/`S`,
-  SNMP control OIDs) to a real UPS unless its owner says that unit is a
-  spare they are willing to switch off. Reading a UPS is always safe.
+- **Code and tests never shut anything down.** Nothing in `go test`, the
+  integration scripts or CI may shut a computer down or send a power command
+  to a real UPS. Tests use the fake executor; integration runs set
+  `CURRENTLY_NEVER_SHUTDOWN=1`, point `shutdown.command` and hooks at
+  harmless commands (writing a marker file), use `shutdown.dry_run: true`,
+  and use the `simulator` or `replay` driver for outages.
+- **You don't do it on your own initiative.** Users may well want to test
+  real shutdowns and power commands on their own hardware; that is their
+  call. Don't shut their machines down or send power commands (`load.off`,
+  `load.off.delay`, `shutdown.return`, `shutdown.stayoff`,
+  `test.battery.*`, APC `Z`/`K`/`S`, SNMP control OIDs) unless they ask, and
+  say first what will lose power. Reading a UPS is always safe.
 - **Don't commit serial numbers.** Captures replace them with `REDACTED`;
   check anything pasted by a user before adding it to `testdata/`.
 - **Don't copy code from NUT** (Network UPS Tools is GPL). Facts such as

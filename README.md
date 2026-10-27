@@ -379,6 +379,13 @@ currently.yaml:4: UPS rack (usbhid driver): unknown option "serail" (did you mea
 | `docs` | Documentation site (`mkdocs serve`) |
 | `internal/svcmgr` | Service install and control |
 
+## Contributing
+
+Reports from UPSes other than the one in [Supported UPSes](#supported-upses)
+are the most useful contribution right now. See
+[CONTRIBUTING.md](CONTRIBUTING.md), the [code of conduct](CODE_OF_CONDUCT.md),
+the [AI use policy](AI_POLICY.md) and the [security policy](SECURITY.md).
+
 ## License
 
 Currently is licensed under the [Apache License, Version 2.0](LICENSE).
