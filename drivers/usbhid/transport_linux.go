@@ -40,6 +40,11 @@ func enumerate() ([]DeviceInfo, error) {
 func describeHidraw(name string) (DeviceInfo, error) {
 	sys := filepath.Join(sysHidraw, name, "device")
 	info := DeviceInfo{Path: "/dev/" + name}
+	if path, problem := deviceNode(name); problem != "" {
+		info.Problem = problem
+	} else {
+		info.Path = path
+	}
 
 	uevent, err := os.ReadFile(filepath.Join(sys, "uevent"))
 	if err != nil {
@@ -83,6 +88,74 @@ func describeHidraw(name string) (DeviceInfo, error) {
 	return info, nil
 }
 
+// deviceNode finds the device node of hidraw device name. It is normally
+// /dev/<name>, but a container may get it under another name (such as a
+// stable /dev/ups-rack passed in from the host, since hidraw numbers can
+// change), so any character device in /dev with the same device number
+// will do. problem explains a node that cannot be found.
+func deviceNode(name string) (path, problem string) {
+	devnum := readTrim(filepath.Join(sysHidraw, name, "dev")) // "major:minor"
+	want := "/dev/" + name
+	if sameDevice(want, devnum) {
+		return want, ""
+	}
+	if devnum != "" {
+		if p := findNode("/dev", devnum, 2); p != "" {
+			return p, ""
+		}
+	}
+	if c := Container(); c != "" {
+		return "", fmt.Sprintf("%s (device %s) was not passed into this %s container", want, devnum, c)
+	}
+	return "", fmt.Sprintf("%s (device %s) does not exist, although the kernel has this UPS", want, devnum)
+}
+
+// NodeHelp says how to fix a missing device node.
+func NodeHelp() string {
+	if Container() != "" {
+		return "on the host, pass the UPS's hidraw device into the container (under any name), " +
+			"or run Currently on the host: https://duskglow.github.io/currently/platforms/#containers"
+	}
+	return "check that udev (or devtmpfs) is running"
+}
+
+// sameDevice reports whether path is a character device numbered devnum
+// ("major:minor"). With an unknown number, any character device counts.
+func sameDevice(path, devnum string) bool {
+	var st unix.Stat_t
+	if unix.Stat(path, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFCHR {
+		return false
+	}
+	return devnum == "" || fmt.Sprintf("%d:%d", unix.Major(uint64(st.Rdev)), unix.Minor(uint64(st.Rdev))) == devnum
+}
+
+// findNode searches dir, depth levels deep, for a character device
+// numbered devnum.
+func findNode(dir, devnum string, depth int) string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return ""
+	}
+	var subdirs []string
+	for _, e := range entries {
+		p := filepath.Join(dir, e.Name())
+		switch {
+		case e.Type()&os.ModeCharDevice != 0 || e.Type()&os.ModeSymlink != 0:
+			if sameDevice(p, devnum) {
+				return p
+			}
+		case e.IsDir() && depth > 1 && e.Name() != "pts" && e.Name() != "shm" && e.Name() != "mqueue":
+			subdirs = append(subdirs, p)
+		}
+	}
+	for _, d := range subdirs {
+		if p := findNode(d, devnum, depth-1); p != "" {
+			return p
+		}
+	}
+	return ""
+}
+
 func readTrim(path string) string {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -92,7 +165,10 @@ func readTrim(path string) string {
 }
 
 func openDevice(info DeviceInfo) (Device, error) {
-	name := filepath.Base(info.Path)
+	if info.Problem != "" {
+		return nil, errors.New(info.Problem + "; " + NodeHelp())
+	}
+	name := sysName(info.Path)
 	desc, err := os.ReadFile(filepath.Join(sysHidraw, name, "device", "report_descriptor"))
 	if err != nil {
 		return nil, fmt.Errorf("read report descriptor: %w", err)
@@ -106,6 +182,23 @@ func openDevice(info DeviceInfo) (Device, error) {
 		return nil, err
 	}
 	return newRawDevice(info, desc, &hidraw{f: f})
+}
+
+// sysName returns the hidraw name (hidraw3) of a device node, which may
+// have another name in a container.
+func sysName(path string) string {
+	var st unix.Stat_t
+	if unix.Stat(path, &st) == nil {
+		devnum := fmt.Sprintf("%d:%d", unix.Major(uint64(st.Rdev)), unix.Minor(uint64(st.Rdev)))
+		if entries, err := os.ReadDir(sysHidraw); err == nil {
+			for _, e := range entries {
+				if readTrim(filepath.Join(sysHidraw, e.Name(), "dev")) == devnum {
+					return e.Name()
+				}
+			}
+		}
+	}
+	return filepath.Base(path)
 }
 
 type hidraw struct{ f *os.File }

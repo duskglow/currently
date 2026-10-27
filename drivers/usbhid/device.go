@@ -21,6 +21,9 @@ type DeviceInfo struct {
 	Serial       string `json:"serial,omitempty"`
 	// Usage of the device's top-level collection, such as hid.UsageUPS.
 	Usage hid.Usage `json:"usage"`
+	// Problem explains why the device cannot be opened, such as a device
+	// node missing in a container; empty when it can be.
+	Problem string `json:"problem,omitempty"`
 }
 
 // IsPowerDevice reports whether the device's top-level collection belongs

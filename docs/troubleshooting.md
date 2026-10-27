@@ -19,6 +19,10 @@ fixes it.
 Information → USB (macOS) or `usbconfig list` (FreeBSD). On Linux and
 FreeBSD only one program can use the UPS: stop NUT's driver first.
 
+**"was not passed into this container".** Currently can see the host's
+UPS but not open it: pass its hidraw device into the container (see
+[Containers](platforms.md#containers)).
+
 **"permission denied".** The service runs as root and is unaffected. To
 use the CLI as a regular user on Linux, install the udev rule and join the
 `currently` group (see [Platforms](platforms.md#linux)).

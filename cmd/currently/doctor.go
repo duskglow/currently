@@ -301,6 +301,10 @@ func (d *doctor) checkUSB(cfg *config.Config) {
 		return
 	}
 	for _, u := range upses {
+		if u.Problem != "" {
+			d.add(checkFail, "USB", "found "+u.Description()+", but "+u.Problem, usbhid.NodeHelp())
+			continue
+		}
 		d.add(checkOK, "USB", "found "+u.Description())
 		if runtime.GOOS == "linux" && os.Geteuid() != 0 {
 			if f, err := os.OpenFile(u.Path, os.O_RDWR, 0); err != nil {

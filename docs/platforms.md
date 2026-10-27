@@ -59,7 +59,82 @@ Logs go to syslog (`/var/log/messages`), tagged `currently`.
 
 ## Containers
 
-The `ghcr.io/duskglow/currently` image is for monitoring: pass the UPS with
-`--device /dev/hidrawN`, mount `/etc/currently`, and listen on all interfaces.
-A container cannot shut its host down; run Currently on the host for that, or
-a Currently secondary on each host that must shut down.
+Currently runs in LXC, Proxmox, Incus and Docker containers, but a container
+only sees the devices its host passes in. A container shares the host's
+kernel, so Currently can list the host's UPSes (in `/sys`) even when it
+cannot open them; `currently detect` and `currently doctor` then say that
+the device node was not passed in.
+
+Pass in each UPS's **hidraw** device. Passing the USB bus (`/dev/bus/usb`),
+as NUT setups do, is not enough: Currently talks to UPSes through hidraw.
+
+### Stable names
+
+hidraw numbers (`/dev/hidraw2`) can change when a UPS is replugged or the
+host restarts, so give each UPS a stable name on the host with a udev rule,
+and pass that in. Currently finds a UPS by its device number, so the name
+inside the container does not matter. For example, in
+`/etc/udev/rules.d/91-ups-names.rules` on the host:
+
+```
+# by serial number (see `currently detect` or `udevadm info -a /dev/hidraw2`)
+SUBSYSTEM=="hidraw", ATTRS{serial}=="CTHGP2001234", SYMLINK+="ups-rack"
+# or, for identical UPSes without serial numbers, by USB port
+SUBSYSTEM=="hidraw", KERNELS=="3-1.2", SYMLINK+="ups-desk"
+```
+
+then `sudo udevadm control --reload && sudo udevadm trigger -s hidraw`.
+`udevadm info -a /dev/hidraw2 | grep -m1 KERNELS` shows a UPS's port. In the
+container's `currently.yaml`, choose UPSes by `serial:` or `id:`, not
+`path:`.
+
+### Passing the device in
+
+=== "Proxmox"
+
+    In `/etc/pve/lxc/<id>.conf` (Proxmox VE 8.1 and later), one line per
+    UPS; Proxmox creates the node in the container with the right owner:
+
+    ```
+    dev0: /dev/ups-rack
+    dev1: /dev/ups-desk
+    ```
+
+=== "LXC"
+
+    In the container's config, allow the hidraw device major (the first
+    number in `ls -l /dev/hidraw*` on the host) and bind each node:
+
+    ```
+    lxc.cgroup2.devices.allow: c 245:* rwm
+    lxc.mount.entry: /dev/ups-rack dev/ups-rack none bind,optional,create=file
+    ```
+
+    In an unprivileged container, root inside is an unprivileged user on
+    the host, so let it open the device: add `OWNER="100000"` (the
+    container's root, as mapped in `/etc/subuid`) to the host's udev rule.
+
+=== "Incus"
+
+    ```
+    incus config device add <container> ups-rack unix-char source=/dev/ups-rack path=/dev/ups-rack
+    ```
+
+=== "Docker"
+
+    ```
+    docker run ... --device /dev/ups-rack:/dev/ups-rack ghcr.io/duskglow/currently
+    ```
+
+If a UPS is replugged while the container runs, restart the container so
+it gets the new device.
+
+### What a container can do
+
+A container can monitor, serve monitoring tools and run shutdown hooks,
+but it cannot shut its host down: shutting down a container only stops the
+container. To shut the host down, run Currently on the host, or run a
+Currently secondary (`nut` driver) on each machine that must shut down.
+
+The `ghcr.io/duskglow/currently` image is set up for monitoring: pass the UPS
+in as above, mount `/etc/currently`, and listen on all interfaces.
