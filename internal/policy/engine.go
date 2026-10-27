@@ -118,6 +118,13 @@ func New(cfg *Config, opts Options) *Engine {
 	return e
 }
 
+// disabled reports whether there is no shutdown policy.
+func (e *Engine) disabled() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.state == StateDisabled
+}
+
 func sleepCtx(ctx context.Context, d time.Duration) error {
 	t := time.NewTimer(d)
 	defer t.Stop()
@@ -131,7 +138,7 @@ func sleepCtx(ctx context.Context, d time.Duration) error {
 
 // Run evaluates the policy every second until ctx is cancelled.
 func (e *Engine) Run(ctx context.Context) error {
-	if e.state == StateDisabled {
+	if e.disabled() {
 		return nil
 	}
 	e.opts.Log.Info("shutdown policy armed", "supplies", e.supplyNames(), "min_supplies", e.cfg.MinSupplies,
@@ -542,7 +549,7 @@ type Status struct {
 
 // Status returns the current state.
 func (e *Engine) Status() Status {
-	if e.state == StateDisabled {
+	if e.disabled() {
 		return Status{State: StateDisabled}
 	}
 	plan := e.Plan()

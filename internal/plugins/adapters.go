@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
 	currentlyv1 "github.com/duskglow/currently/gen/currently/v1"
 	"github.com/duskglow/currently/pkg/plugin"
@@ -183,7 +184,7 @@ func (o *Output) Run(ctx context.Context, host sdk.Host, cfg sdk.Config, log *sl
 	}
 	defer hs.stop()
 	_, err = c.RunOutput(ctx, &currentlyv1.RunOutputRequest{Config: pc, HostAddress: hs.addr, HostToken: hs.token, AllowControl: allow})
-	if ctx.Err() != nil {
+	if stopped(ctx) {
 		return nil
 	}
 	if err == nil {
@@ -192,4 +193,15 @@ func (o *Output) Run(ctx context.Context, host sdk.Host, cfg sdk.Config, log *sl
 	err = plugin.StatusToErr(err)
 	o.p.recordError(err)
 	return err
+}
+
+// stopped reports whether ctx has ended. gRPC passes ctx's deadline to the
+// plugin, which can give up on it a moment before ctx's own timer fires, so
+// a passed deadline counts too.
+func stopped(ctx context.Context) bool {
+	if ctx.Err() != nil {
+		return true
+	}
+	d, ok := ctx.Deadline()
+	return ok && !time.Now().Before(d)
 }

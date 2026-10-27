@@ -825,7 +825,7 @@ var File_currently_v1_driver_proto protoreflect.FileDescriptor
 
 const file_currently_v1_driver_proto_rawDesc = "" +
 	"\n" +
-	"\x19currently/v1/driver.proto\x12\fcurrently.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x18currently/v1/types.proto\"\x17\n" +
+	"\x19currently/v1/driver.proto\x12\fcurrently.v1\x1a\x18currently/v1/types.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x17\n" +
 	"\x15DescribeDriverRequest\"F\n" +
 	"\x16DescribeDriverResponse\x12,\n" +
 	"\x04info\x18\x01 \x01(\v2\x18.currently.v1.PluginInfoR\x04info\"N\n" +

@@ -21,8 +21,17 @@ export CURRENTLY_NEVER_SHUTDOWN=1
 T=/tmp/currently-shutdown-test
 rm -rf "$T"; mkdir -p "$T"/{pkgs,root,upsmon,upsd,markers}
 
-if command -v upsc >/dev/null && [ -x /lib/nut/upsmon ] && [ -x /lib/nut/upsd ]; then
-  UPSMON=/lib/nut/upsmon UPSD=/lib/nut/upsd DUMMY=/lib/nut/dummy-ups
+# nutbin NAME [ROOT] prints the path of a NUT program (an ELF binary, not
+# the wrapper scripts some distributions put in /sbin), or nothing.
+nutbin() {
+  for d in lib/nut usr/lib/nut usr/libexec/nut usr/sbin sbin usr/bin bin; do
+    f="${2:-}/$d/$1"
+    if [ -x "$f" ] && [ "$(head -c4 "$f" 2>/dev/null | tail -c3)" = ELF ]; then echo "$f"; return; fi
+  done
+}
+
+if command -v upsc >/dev/null && [ -n "$(nutbin upsmon)" ] && [ -n "$(nutbin upsd)" ] && [ -n "$(nutbin dummy-ups)" ]; then
+  UPSMON="$(nutbin upsmon)" UPSD="$(nutbin upsd)" DUMMY="$(nutbin dummy-ups)"
 else
   echo "NUT not installed; downloading it into $T"
   (cd "$T/pkgs" && apt-get download nut-client nut-server libupsclient6t64 libnutscan2t64 libnss3=2:3.98-1build1 libnspr4 >/dev/null 2>&1) ||
@@ -30,7 +39,7 @@ else
   for d in "$T"/pkgs/*.deb; do dpkg -x "$d" "$T/root"; done
   LIB="$(find "$T/root" -name 'libupsclient.so.6*' | head -1)"
   export LD_LIBRARY_PATH="$(dirname "$LIB"):$T/root/usr/lib/x86_64-linux-gnu:$T/root/lib/x86_64-linux-gnu"
-  UPSMON="$T/root/lib/nut/upsmon" UPSD="$T/root/lib/nut/upsd" DUMMY="$T/root/lib/nut/dummy-ups"
+  UPSMON="$(nutbin upsmon "$T/root")" UPSD="$(nutbin upsd "$T/root")" DUMMY="$(nutbin dummy-ups "$T/root")"
 fi
 ME="$(id -un)"
 pass=0; fail=0

@@ -8,8 +8,8 @@ syntax = "proto3";
 // The core adapts it to sdk.Driver and sdk.Device.
 package currently.v1;
 
-import "google/protobuf/struct.proto";
 import "currently/v1/types.proto";
+import "google/protobuf/struct.proto";
 
 option go_package = "github.com/duskglow/currently/gen/currently/v1;currentlyv1";
 

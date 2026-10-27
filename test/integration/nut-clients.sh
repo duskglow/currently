@@ -14,9 +14,18 @@ CURRENTLY="$(realpath "${1:?usage: $0 path/to/currently}")"
 T=/tmp/currently-nut-test
 rm -rf "$T"; mkdir -p "$T"/{pkgs,root,state1,state2}
 
-if command -v upsc >/dev/null && [ -x /lib/nut/upsmon ]; then
+# nutbin NAME [ROOT] prints the path of a NUT program (an ELF binary, not
+# the wrapper scripts some distributions put in /sbin), or nothing.
+nutbin() {
+  for d in lib/nut usr/lib/nut usr/libexec/nut usr/sbin sbin usr/bin bin; do
+    f="${2:-}/$d/$1"
+    if [ -x "$f" ] && [ "$(head -c4 "$f" 2>/dev/null | tail -c3)" = ELF ]; then echo "$f"; return; fi
+  done
+}
+
+if command -v upsc >/dev/null && [ -n "$(nutbin upsmon)" ]; then
   B="$(dirname "$(command -v upsc)")"
-  UPSMON=/lib/nut/upsmon # /sbin/upsmon is a wrapper script on Debian/Ubuntu
+  UPSMON="$(nutbin upsmon)"
 else
   echo "NUT clients not installed; downloading them into $T"
   # libnss3 is pinned to the release version, which stays on the mirrors
@@ -27,7 +36,7 @@ else
   LIB="$(find "$T/root" -name 'libupsclient.so.6*' | head -1)"
   export LD_LIBRARY_PATH="$(dirname "$LIB"):$T/root/usr/lib/x86_64-linux-gnu:$T/root/lib/x86_64-linux-gnu"
   B="$T/root/bin"; [ -x "$B/upsc" ] || B="$T/root/usr/bin"
-  UPSMON="$T/root/lib/nut/upsmon"
+  UPSMON="$(nutbin upsmon "$T/root")"
 fi
 echo "NUT client: $("$B/upsc" -V 2>&1 | head -1)"
 

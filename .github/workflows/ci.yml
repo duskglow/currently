@@ -16,10 +16,10 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          go-version: stable
       - run: go vet ./...
       - run: go test -race ./...
         if: runner.os != 'Windows'
@@ -33,7 +33,7 @@ jobs:
     # The FreeBSD USB transport and the rest of the unit tests, in a VM.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: vmactions/freebsd-vm@v1
         with:
           release: "14.3"
@@ -60,10 +60,10 @@ jobs:
           - windows/amd64
           - windows/arm64
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          go-version: stable
       - name: Build ${{ matrix.target }}
         env:
           TARGET: ${{ matrix.target }}
@@ -77,11 +77,11 @@ jobs:
     # Plugins as separate processes, including the Python SDK.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
-      - uses: actions/setup-python@v5
+          go-version: stable
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: python -m pip install -r internal/scaffold/templates/python/requirements.txt
@@ -92,11 +92,11 @@ jobs:
     # gen/ and the Python SDK must match proto/.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
-      - uses: actions/setup-python@v5
+          go-version: stable
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: python -m pip install grpcio-tools==1.85.0
@@ -109,11 +109,13 @@ jobs:
     # commands only write marker files, and CURRENTLY_NEVER_SHUTDOWN is set.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
-      - run: sudo apt-get update && sudo apt-get install -y nut-client nut-server
+          go-version: stable
+      - run: |
+          sudo apt-get update && sudo apt-get install -y nut-client nut-server
+          dpkg -L nut-client nut-server | grep -E '/(upsc|upsmon|upsd|dummy-ups)$'
       - run: go build -o currently ./cmd/currently
       - run: bash test/integration/nut-clients.sh ./currently
       - run: bash test/integration/shutdown.sh ./currently
@@ -122,10 +124,10 @@ jobs:
     # The SNMP agent against net-snmp's snmpget/snmpwalk and snmptrapd.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          go-version: stable
       - run: sudo apt-get update && sudo apt-get install -y snmp snmptrapd
       - run: go build -o currently ./cmd/currently
       - run: bash test/integration/snmp.sh ./currently
@@ -135,13 +137,13 @@ jobs:
     # installed and started for real.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
-      - uses: goreleaser/goreleaser-action@v6
+          go-version: stable
+      - uses: goreleaser/goreleaser-action@v7
         with:
           version: "~> v2"
           args: release --snapshot --clean --skip=docker,sign,sbom
@@ -156,7 +158,7 @@ jobs:
           currently plugin list | grep -c -E "mqtt|snmp|serial" | grep -qx 3
           sudo dpkg -r currently
           ! systemctl is-active currently
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: snapshot
           path: dist/*_windows_amd64.zip
@@ -165,8 +167,8 @@ jobs:
     needs: packaging
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: snapshot
           path: dist
@@ -178,11 +180,11 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
-      - uses: golangci/golangci-lint-action@v8
+          go-version: stable
+      - uses: golangci/golangci-lint-action@v9
         with:
           version: latest
       - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
@@ -190,7 +192,7 @@ jobs:
   proto:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: bufbuild/buf-action@v1
         with:
           lint: true
