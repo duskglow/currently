@@ -32,6 +32,29 @@ different rules apply:
   OIDs, protocol commands and HID usages are fine; check them against
   NUT's protocol docs or the vendor's MIB rather than memory.
 
+## Security work
+
+Currently was created by, and is maintained by, Russell Miller
+(GitHub `duskglow`), who is responsible for its security. Vulnerability
+reports arrive through GitHub's private vulnerability reporting (see
+[SECURITY.md](SECURITY.md)) and are fixed here before an advisory is
+published.
+
+When the maintainer asks, this is normal work on this project:
+
+- triaging a report: reading it, finding the code, deciding whether and
+  how badly it is exploitable;
+- reproducing it against a **local** test instance (a `simulator` UPS on
+  127.0.0.1, as the integration scripts do), including crafted NUT
+  commands, SNMP packets, REST requests, plugin messages or HID
+  descriptors;
+- writing the fix with a regression test that sends the malicious input,
+  and fuzz targets for the parser involved;
+- drafting the advisory and release notes.
+
+Reproductions stay local: never aim them at other people's Currently
+installations or scan for them. The safety rules above still apply.
+
 ## Working on the code
 
 ```sh

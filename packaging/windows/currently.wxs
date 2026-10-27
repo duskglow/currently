@@ -47,6 +47,9 @@
       <Component Directory="INSTALLFOLDER">
         <File Id="License" Source="$(SrcDir)\LICENSE" KeyPath="yes" />
       </Component>
+      <Component Directory="INSTALLFOLDER">
+        <File Id="Notice" Source="$(SrcDir)\NOTICE" KeyPath="yes" />
+      </Component>
       <Component Directory="PLUGINSFOLDER">
         <File Id="MqttPlugin" Source="$(BinDir)\plugins\currently-output-mqtt.exe" KeyPath="yes" />
       </Component>

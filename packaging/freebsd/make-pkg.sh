@@ -25,6 +25,7 @@ install -m 555 "$here/currently" "$stage/usr/local/etc/rc.d/currently"
 install -m 644 "$work/x/currently.example.yaml" "$stage/usr/local/share/examples/currently/currently.example.yaml"
 install -m 644 "$work/x/README.md" "$stage/usr/local/share/doc/currently/README.md"
 install -m 644 "$work/x/LICENSE" "$stage/usr/local/share/doc/currently/LICENSE"
+install -m 644 "$work/x/NOTICE" "$stage/usr/local/share/doc/currently/NOTICE"
 
 cat > "$work/+MANIFEST" <<MANIFEST
 name: currently

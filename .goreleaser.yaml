@@ -57,6 +57,7 @@ archives:
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}"
     files:
       - LICENSE
+      - NOTICE
       - README.md
       - currently.example.yaml
       - src: packaging/linux/*
@@ -116,6 +117,9 @@ nfpms:
         file_info: { mode: 0644 }
       - src: LICENSE
         dst: /usr/share/doc/currently/LICENSE
+        file_info: { mode: 0644 }
+      - src: NOTICE
+        dst: /usr/share/doc/currently/NOTICE
         file_info: { mode: 0644 }
     scripts:
       postinstall: packaging/linux/postinstall.sh

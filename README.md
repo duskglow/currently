@@ -389,7 +389,9 @@ the [AI use policy](AI_POLICY.md) and the [security policy](SECURITY.md).
 
 ## License
 
-Currently is licensed under the [Apache License, Version 2.0](LICENSE).
+Currently is created and maintained by Russell Miller
+([@duskglow](https://github.com/duskglow)) and licensed under the
+[Apache License, Version 2.0](LICENSE); see [NOTICE](NOTICE).
 
 ## Development
 

@@ -13,8 +13,10 @@ shut computers down and switch UPS power. Please report:
 * passwords, tokens or communities leaking into logs, `currently config show`, captures or
   the API.
 
-Report privately through GitHub Security Advisories on this repository rather than in a
-public issue.
+Report privately through GitHub Security Advisories on this repository
+(Security → Report a vulnerability) rather than in a public issue. Reports go to the
+maintainer, Russell Miller ([@duskglow](https://github.com/duskglow)), who fixes them,
+requests a CVE where one is warranted, and publishes an advisory with the fixed release.
 
 `currently.yaml` and `/etc/default/currently` hold passwords, API tokens and SNMP
 communities. Treat them, and any logs taken with `log.level: debug`, as secrets.
