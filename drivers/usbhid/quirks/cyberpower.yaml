@@ -2,6 +2,7 @@ name: cyberpower
 description: CyberPower Systems (CPS)
 verified:
   - CP1500PFCLCD (0764:0601), Windows
+  - CP1500PFCLCD (0764:0601), Linux (hidraw)
 match:
   vendor_ids: ["0764", "0501"]
 

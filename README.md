@@ -7,13 +7,46 @@ config file, clear error messages, and an API that monitoring tools can
 query. It speaks NUT's protocol, so NUT clients work with it unchanged.
 (The project was called nut-ng until October 2026.)
 
-> **Status:** early development (all 7 planned milestones built). USB
-> UPSes work on Linux, Windows, macOS and FreeBSD, and network-card and
-> serial UPSes (Megatec/Q1, APC Smart) through bundled driver plugins. Currently shuts computers down safely (as
-> primary or secondary, and alongside NUT's upsmon and upsd), serves the
-> NUT protocol, SNMP (UPS-MIB), Prometheus metrics, MQTT and a REST API,
-> installs itself as a service, and takes driver and output plugins. See
-> the [documentation](docs/index.md) and [docs/PLAN.md](docs/PLAN.md).
+> **Alpha.** Every planned feature is built, but Currently has been tested
+> with one model of UPS, and much of it only against simulators. Don't rely
+> on it alone to protect equipment yet: run it alongside your current setup
+> (NUT, or your UPS maker's software) until you have watched it through a
+> real power cut, and rehearse shutdowns with `currently test shutdown` and
+> `shutdown.dry_run` first. Reports of what works and what doesn't are very
+> welcome.
+
+It monitors USB UPSes on Linux, Windows, macOS and FreeBSD, network-card
+and serial UPSes through bundled plugins, shuts computers down safely (as
+primary or secondary, and alongside NUT's upsmon and upsd), and serves the
+NUT protocol, SNMP (UPS-MIB), Prometheus metrics, MQTT and a REST API. See
+the [documentation](docs/index.md) and the [design plan](docs/PLAN.md).
+
+## Supported UPSes
+
+Tested with real hardware so far:
+
+| UPS | Connection | Tested on |
+|---|---|---|
+| CyberPower CP1500PFCLCD (USB ID 0764:0601) | USB | Windows 11; Linux (Ubuntu 24.04 in a container, four units at once) |
+
+That is the whole list because it is the only UPS the project has had to
+test with, **not** because others won't work. Currently follows the
+standard USB HID Power Device class that most APC, CyberPower, Eaton,
+Tripp Lite and similar UPSes use, and also reads network cards (UPS-MIB,
+APC PowerNet-MIB) and serial UPSes (Megatec/Q1, APC Smart). Those paths
+are tested against simulators and recorded data, not yet against real
+units:
+
+- other CyberPower models, and APC and Eaton USB UPSes
+- USB on macOS and FreeBSD
+- SNMP network cards and serial UPSes
+- UPS power commands (`power_off_ups`) on any hardware
+
+If you try Currently with another UPS, please open an issue either way,
+with the file from `currently debug capture` attached: it records what the
+UPS reports (with the serial number removed), which is usually all it
+takes to add or fix support. See [CLAUDE.md](CLAUDE.md) for how that is
+done.
 
 ## Get started
 
@@ -210,10 +243,8 @@ operating system's own HID driver:
   support keeps working. No cgo or extra libraries.
 - **FreeBSD:** uses uhid(4) or hidraw(4).
 
-Tested on hardware: CyberPower CP1500PFCLCD on Windows. The macOS and
-FreeBSD transports are tested in CI but not yet with a real UPS; APC and
-Eaton mappings follow the standard layout but haven't been checked on real
-units yet. See [Platforms](docs/platforms.md).
+See [Supported UPSes](#supported-upses) for what has been tested on real
+hardware, and [Platforms](docs/platforms.md) for each operating system.
 
 When a UPS shows wrong or missing values, record it:
 

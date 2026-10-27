@@ -1,8 +1,10 @@
 # Install
 
 Every release has packages for each platform on the
-[releases page](https://github.com/duskglow/currently/releases). They install
-the `currently` binary, the bundled plugins (the SNMP and serial drivers,
+[releases page](https://github.com/duskglow/currently/releases). For now,
+releases are alpha pre-releases (see the [home page](index.md)).
+
+The packages install the `currently` binary, the bundled plugins (the SNMP and serial drivers,
 and the MQTT output) and a system service, and leave the
 service stopped until there is a config file (except on Windows, where it
 starts at once and finds USB UPSes by itself).

@@ -30,4 +30,14 @@ rack  CyberPower CP1500PFCLCD  (usbhid driver)
   Output      120.0 V, 60.0 Hz
 ```
 
+!!! warning "Alpha"
+    Every planned feature is built, but Currently has been tested with one
+    model of UPS (the CyberPower CP1500PFCLCD, on Windows and Linux), and
+    much of it only against simulators. Run it alongside your current setup
+    until you have watched it through a real power cut, and rehearse
+    shutdowns with `currently test shutdown` and `shutdown.dry_run` first.
+    Other UPSes should work (most follow the same USB standard), but are
+    untested: if you try one, please report it with the file from
+    `currently debug capture`.
+
 Start with [Install](install.md) and the [Quick start](quickstart.md).

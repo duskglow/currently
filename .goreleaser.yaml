@@ -213,3 +213,12 @@ release:
     owner: duskglow
     name: currently
   prerelease: auto
+  name_template: "Currently {{ .Tag }}"
+  header: |
+    {{ if .Prerelease }}**This is an alpha pre-release.** Every planned feature is built, but
+    Currently has been tested with one model of UPS (CyberPower CP1500PFCLCD, on
+    Windows and Linux) and much of it only against simulators. Run it alongside
+    your current setup until you have watched it through a real power cut, and
+    rehearse shutdowns with `currently test shutdown` first. Reports of what works
+    with your UPS (and what doesn't) are very welcome; see the
+    [README](https://github.com/duskglow/currently#supported-upses).{{ end }}

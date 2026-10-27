@@ -11,7 +11,10 @@
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
   <Package Name="Currently" Manufacturer="Currently" Version="$(Version)"
            UpgradeCode="E32A154F-EF7F-4641-A694-DBE673BD1831" Scope="perMachine">
-    <MajorUpgrade DowngradeErrorMessage="A newer version of Currently is already installed." />
+    <!-- MSI versions are numbers only: 0.1.0-alpha.1 and 0.1.0 are both 0.1.0,
+         so same-version upgrades must be allowed for one to replace the other. -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer version of Currently is already installed." />
     <MediaTemplate EmbedCab="yes" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/duskglow/currently" />
 

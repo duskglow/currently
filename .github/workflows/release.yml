@@ -78,5 +78,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           v=${GITHUB_REF_NAME#v}
-          cp dist/currently-${v}.pkg dist/currently_${v}_freebsd_amd64.pkg
+          cp dist/currently-$(echo "$v" | tr - .).pkg dist/currently_${v}_freebsd_amd64.pkg
           gh release upload ${{ github.ref_name }} dist/currently_${v}_freebsd_amd64.pkg

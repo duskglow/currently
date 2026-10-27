@@ -7,6 +7,8 @@
 # Install the result with `pkg add currently-1.2.3.pkg`.
 set -eu
 version=$1 archive=$2 out=$3
+# pkg versions cannot contain "-"; 0.1.0.alpha.1 sorts before 0.1.0.
+pkgversion=$(echo "$version" | tr - .)
 here=$(cd "$(dirname "$0")" && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -26,7 +28,7 @@ install -m 644 "$work/x/LICENSE" "$stage/usr/local/share/doc/currently/LICENSE"
 
 cat > "$work/+MANIFEST" <<MANIFEST
 name: currently
-version: "$version"
+version: "$pkgversion"
 origin: sysutils/currently
 comment: "Easy UPS monitor: NUT protocol, SNMP, Prometheus and REST"
 www: "https://github.com/duskglow/currently"

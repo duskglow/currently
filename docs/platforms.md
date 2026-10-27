@@ -6,7 +6,7 @@ driver, so there is nothing to install and no driver to replace.
 
 | | USB transport | Service | Tested with a real UPS |
 |---|---|---|---|
-| Linux | hidraw | systemd, OpenRC, SysV | not yet (captures and simulated UPSes) |
+| Linux | hidraw | systemd, OpenRC, SysV | CyberPower CP1500PFCLCD (Ubuntu 24.04, in a container) |
 | Windows | hid.dll | Service Control Manager | CyberPower CP1500PFCLCD |
 | macOS | IOKit (IOHIDDevice) | launchd | not yet |
 | FreeBSD | uhid(4) or hidraw(4) | rc.d | not yet |
